@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c941c707f50b7633bf199dce96e510cdee76c3b4296eaceba1dee705689028d9
+-- hash: 244853337ea57f5c9aa0b7d66ff53140749e59474a57061525f43587a9362206
 
 name:           write-yourself-a-scheme
 version:        0.1.0.0
@@ -29,7 +29,6 @@ library
   exposed-modules:
       Ch01.Hello
       Ch02.RecursiveParser
-      Ch02.SimpleParser1
       Ch02.SimpleParser2
       Lib
   other-modules:

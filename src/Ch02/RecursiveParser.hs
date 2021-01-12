@@ -1,68 +1,37 @@
 module Ch02.RecursiveParser where
-import Control.Monad
 import System.Environment
 import Text.ParserCombinators.Parsec hiding (spaces)
 
 main0 :: IO ()
 main0 = do args <- getArgs
-           putStrLn (readExpr (args !! 0 ))
+           putStrLn (readExpr (args !! 0))
 
+-- |
+-- >>> parse symbol "" "$"
+-- Right '$'
+-- >>> parse symbol "" "a"
+-- Left (line 1, column 1):
+-- unexpected "a"
 symbol :: Parser Char
-symbol = oneOf "!$%&|*+-/:<=?>@^_~#"
+symbol = oneOf "!$%&|*+_/:<=?>@^_~#"
 
-readExpr input = case parse parseExpr "lisp" input of
+-- |
+-- >>> readExpr "$"
+-- "Found value"
+-- >>> readExpr "a"
+-- "No match: \"lisp\" (line 1, column 1):\nunexpected \"a\""
+-- >>> readExpr "     %"
+-- "No match: \"lisp\" (line 1, column 1):\nunexpected \" \""
+readExpr :: String -> String
+readExpr input = case parse symbol "lisp" input of
     Left err -> "No match: " ++ show err
-    Right val -> "Found val"
+    Right val -> "Found value"
 
-spaces :: Parser ()
-spaces = skipMany1 space
+-- To compile and run this
+-- ghc -package parsec -o ../bin/simple_parser simple-parser1.hs
+-- usage: ../bin/simple_parser $
+-- returns: Found value
+-- usage: ../bin/simple_parser a
+-- returns: No match: "lisp" (line 1, column 1):
+--         unexpected "a"
 
-data LispVal = Atom String
-             | List [LispVal]
-             | DottedList [LispVal] LispVal
-             | Number Integer
-             | String String
-             | Bool Bool
-
-parseString :: Parser LispVal
-parseString = do char '"'
-                 x <- many (noneOf "\"")
-                 char '"'
-                 return $ String x
-
-parseAtom :: Parser LispVal
-parseAtom = do first <- letter <|> symbol
-               rest <- many (letter <|> digit <|> symbol)
-               let atom = [first] ++ rest
-               return $ case atom of
-                             "#t" -> Bool True
-                             "#f" -> Bool False
-                             otherwise -> Atom atom
-
-parseNumber :: Parser LispVal
-parseNumber = liftM (Number . read) $ many1 digit
-
-parseList :: Parser LispVal
-parseList = liftM List $ sepBy parseExpr spaces
-
-parseDottedList :: Parser LispVal
-parseDottedList = do 
-    head <- endBy parseExpr spaces
-    tail <- char '.' >> spaces >> parseExpr
-    return $ DottedList head tail
-
-parseQuoted :: Parser LispVal
-parseQuoted = do
-    char '\''
-    x <- parseExpr
-    return $ List [Atom "quote", x]
-
-parseExpr :: Parser LispVal
-parseExpr = parseAtom
-        <|> parseString
-        <|> parseNumber
-        <|> parseQuoted
-        <|> do char '('
-               x <- (try parseList) <|> parseDottedList
-               char ')'
-               return x
