@@ -1,10 +1,10 @@
-module Main where
+module Ch02.SimpleParser1 where
 import System.Environment
 import Text.ParserCombinators.Parsec hiding (spaces)
 
-main :: IO ()
-main = do args <- getArgs
-          putStrLn (readExpr (args !! 0))
+main0 :: IO ()
+main0 = do args <- getArgs
+           putStrLn (readExpr (args !! 0))
 
 symbol :: Parser Char
 symbol = oneOf "!$%&|*+_/:<=?>@^_~#"

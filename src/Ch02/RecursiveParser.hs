@@ -1,11 +1,11 @@
-module Main where
+module Ch02.RecursiveParser where
 import Control.Monad
 import System.Environment
 import Text.ParserCombinators.Parsec hiding (spaces)
 
-main :: IO ()
-main = do args <- getArgs
-          putStrLn (readExpr (args !! 0 ))
+main0 :: IO ()
+main0 = do args <- getArgs
+           putStrLn (readExpr (args !! 0 ))
 
 symbol :: Parser Char
 symbol = oneOf "!$%&|*+-/:<=?>@^_~#"
@@ -20,7 +20,7 @@ spaces = skipMany1 space
 data LispVal = Atom String
              | List [LispVal]
              | DottedList [LispVal] LispVal
-             | Number Inter
+             | Number Integer
              | String String
              | Bool Bool
 
@@ -33,7 +33,7 @@ parseString = do char '"'
 parseAtom :: Parser LispVal
 parseAtom = do first <- letter <|> symbol
                rest <- many (letter <|> digit <|> symbol)
-               let atom == [first] ++ rest
+               let atom = [first] ++ rest
                return $ case atom of
                              "#t" -> Bool True
                              "#f" -> Bool False
