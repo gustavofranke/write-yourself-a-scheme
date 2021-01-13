@@ -1,4 +1,5 @@
 module Ch02.RecursiveParser where
+
 import Control.Monad
 import System.Environment
 import Text.ParserCombinators.Parsec hiding (spaces)
@@ -37,8 +38,8 @@ symbol = oneOf "!$%&|*+_/:<=?>@^_~#"
 -- >>> readExpr "(a '(imbalanced parens)"
 -- "No match: \"lisp\" (line 1, column 24):\nunexpected end of input\nexpecting space or \")\""
 readExpr input = case parse parseExpr "lisp" input of
-    Left err -> "No match: " ++ show err
-    Right val -> "Found value"
+  Left err -> "No match: " ++ show err
+  Right val -> "Found value"
 
 -- |
 -- >>> parse spaces "default" "    sd"
@@ -50,12 +51,14 @@ readExpr input = case parse parseExpr "lisp" input of
 spaces :: Parser ()
 spaces = skipMany1 space
 
-data LispVal = Atom String
-             | List [LispVal]
-             | DottedList [LispVal] LispVal
-             | Number Integer
-             | String String
-             | Bool Bool deriving Show
+data LispVal
+  = Atom String
+  | List [LispVal]
+  | DottedList [LispVal] LispVal
+  | Number Integer
+  | String String
+  | Bool Bool
+  deriving (Show)
 
 -- |
 -- >>> parse parseString "default" "\"hello\""
@@ -65,10 +68,11 @@ data LispVal = Atom String
 -- unexpected "h"
 -- expecting "\""
 parseString :: Parser LispVal
-parseString = do char '"'
-                 x <- many (noneOf "\"")
-                 char '"'
-                 return $ String x
+parseString = do
+  char '"'
+  x <- many (noneOf "\"")
+  char '"'
+  return $ String x
 
 -- |
 -- >>> parse parseAtom "default" "hello"
@@ -84,13 +88,14 @@ parseString = do char '"'
 -- unexpected "1"
 -- expecting letter
 parseAtom :: Parser LispVal
-parseAtom = do first <- letter <|> symbol
-               rest <- many (letter <|> digit <|> symbol)
-               let atom = [first] ++ rest
-               return $ case atom of
-                             "#t" -> Bool True
-                             "#f" -> Bool False
-                             otherwise -> Atom atom
+parseAtom = do
+  first <- letter <|> symbol
+  rest <- many (letter <|> digit <|> symbol)
+  let atom = [first] ++ rest
+  return $ case atom of
+    "#t" -> Bool True
+    "#f" -> Bool False
+    otherwise -> Atom atom
 
 -- |
 -- >>> parse parseNumber "default" "123"
@@ -108,16 +113,16 @@ parseList :: Parser LispVal
 parseList = liftM List $ sepBy parseExpr spaces
 
 parseDottedList :: Parser LispVal
-parseDottedList = do 
-    head <- endBy parseExpr spaces
-    tail <- char '.' >> spaces >> parseExpr
-    return $ DottedList head tail
+parseDottedList = do
+  head <- endBy parseExpr spaces
+  tail <- char '.' >> spaces >> parseExpr
+  return $ DottedList head tail
 
 parseQuoted :: Parser LispVal
 parseQuoted = do
-    char '\''
-    x <- parseExpr
-    return $ List [Atom "quote", x]
+  char '\''
+  x <- parseExpr
+  return $ List [Atom "quote", x]
 
 -- |
 -- >>> parse parseExpr "default" "\"hello\""
@@ -129,14 +134,16 @@ parseQuoted = do
 -- >>> parse parseExpr "default" "true"
 -- Right (Atom "true")
 parseExpr :: Parser LispVal
-parseExpr = parseAtom
-        <|> parseString
-        <|> parseNumber
-        <|> parseQuoted
-        <|> do char '('
-               x <- (try parseList) <|> parseDottedList
-               char ')'
-               return x
+parseExpr =
+  parseAtom
+    <|> parseString
+    <|> parseNumber
+    <|> parseQuoted
+    <|> do
+      char '('
+      x <- (try parseList) <|> parseDottedList
+      char ')'
+      return x
 
 -----------------------------------------------------------------------------
 -- Exercises
@@ -144,8 +151,8 @@ parseExpr = parseAtom
 -- (a) do-notation.
 parseNumber0 :: Parser LispVal
 parseNumber0 = do
-    ds <- many1 digit
-    pure $ (Number . read) ds
+  ds <- many1 digit
+  pure $ (Number . read) ds
 
 -- (b) explicit sequencing with the >>= operator.
 parseNumber1 :: Parser LispVal
