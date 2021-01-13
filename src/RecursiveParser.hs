@@ -1,4 +1,4 @@
-module Ch02.RecursiveParser where
+module RecursiveParser where
 
 import Control.Monad
 import System.Environment

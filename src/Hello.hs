@@ -1,4 +1,4 @@
-module Ch01.Hello where
+module Hello where
 
 import System.Environment
 
