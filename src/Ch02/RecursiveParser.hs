@@ -107,3 +107,16 @@ parseExpr :: Parser LispVal
 parseExpr = parseAtom
         <|> parseString
         <|> parseNumber
+
+-- Exercises
+-- 1. Rewrite parseNumber using
+-- (a) do-notation.
+parseNumber0 :: Parser LispVal
+parseNumber0 = do
+    ds <- many1 digit
+    pure $ (Number . read) ds
+
+-- (b) explicit sequencing with the >>= operator.
+parseNumber1 :: Parser LispVal
+parseNumber1 = many1 digit >>= pure . Number . read
+
