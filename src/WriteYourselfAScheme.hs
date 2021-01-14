@@ -4,11 +4,8 @@ import Control.Monad
 import System.Environment
 import Text.ParserCombinators.Parsec hiding (spaces)
 
-main0 :: IO ()
-main0 = do
-  args <- getArgs
-  putStrLn (readExpr (args !! 0))
-
+-- main0 :: IO ()
+main0 = getArgs >>= putStrLn . show . eval . readExpr . (!! 0)
 -- |
 -- >>> parse symbol "" "$"
 -- Right '$'
@@ -19,28 +16,34 @@ symbol :: Parser Char
 symbol = oneOf "!$%&|*+_/:<=?>@^_~#"
 
 -- |
--- >>> readExpr "$"
--- "Found value"
 -- >>> readExpr "     $"
--- "No match: \"lisp\" (line 1, column 1):\nunexpected \" \"\nexpecting letter, \"\\\"\", digit, \"'\" or \"(\""
+-- "No match: "lisp" (line 1, column 1):
+-- unexpected " "
+-- expecting letter, "\"", digit, "'" or "("'
 -- >>> readExpr "     !"
--- "No match: \"lisp\" (line 1, column 1):\nunexpected \" \"\nexpecting letter, \"\\\"\", digit, \"'\" or \"(\""
+-- "No match: "lisp" (line 1, column 1):
+-- unexpected " "
+-- expecting letter, "\"", digit, "'" or "("'
 -- >>> readExpr "     %"
--- "No match: \"lisp\" (line 1, column 1):\nunexpected \" \"\nexpecting letter, \"\\\"\", digit, \"'\" or \"(\""
+-- "No match: "lisp" (line 1, column 1):
+-- unexpected " "
+-- expecting letter, "\"", digit, "'" or "("'
 -- >>> readExpr "(a test)"
--- "Found value"
+-- (a test)
 -- >>> readExpr "(a (nested) test)"
--- "Found value"
+-- (a (nested) test)
 -- >>> readExpr "(a (dotted . list) test)"
--- "Found value"
+-- (a (dotted.list) test)
 -- >>> readExpr "(a '(quoted (dotted . list)) test)"
--- "Found value"
+-- (a (quote (quoted (dotted.list))) test)
 -- >>> readExpr "(a '(imbalanced parens)"
--- "No match: \"lisp\" (line 1, column 24):\nunexpected end of input\nexpecting space or \")\""
-readExpr :: String -> String
+-- "No match: "lisp" (line 1, column 24):
+-- unexpected end of input
+-- expecting space or ")"'
+readExpr :: String -> LispVal
 readExpr input = case parse parseExpr "lisp" input of
-  Left err -> "No match: " ++ show err
-  Right val -> "Found value"
+  Left err -> String $  "No match: " ++ show err
+  Right val -> val
 
 -- |
 -- >>> parse spaces "default" "    sd"
@@ -137,6 +140,14 @@ parseQuoted = do
 -- Right (1 2 2)
 -- >>> parse parseExpr "default" "'(1 3 (\"this\" \"one\"))"
 -- Right (quote (1 3 ("this' "one')))
+-- >>> parse parseExpr "default" "'atom"
+-- Right (quote atom)
+-- >>> parse parseExpr "default" "2"
+-- Right 2
+-- >>> parse parseExpr "default" "\"a string\""
+-- Right "a string'
+-- >>> parse parseExpr "default" "(+ 2 2)"
+-- Right (+ 2 2)
 parseExpr :: Parser LispVal
 parseExpr =
   parseAtom
@@ -163,6 +174,12 @@ unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
 
 instance Show LispVal where show = showVal
+
+eval :: LispVal -> LispVal
+eval val@(String _) = val
+eval val@(Number _) = val
+eval val@(Bool _)   = val
+eval (List [Atom "quote", val]) = val
 
 -----------------------------------------------------------------------------
 -- Exercises
