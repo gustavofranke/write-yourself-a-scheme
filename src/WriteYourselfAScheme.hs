@@ -1,4 +1,4 @@
-module RecursiveParser where
+module WriteYourselfAScheme where
 
 import Control.Monad
 import System.Environment
