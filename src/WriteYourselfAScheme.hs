@@ -37,6 +37,7 @@ symbol = oneOf "!$%&|*+_/:<=?>@^_~#"
 -- "Found value"
 -- >>> readExpr "(a '(imbalanced parens)"
 -- "No match: \"lisp\" (line 1, column 24):\nunexpected end of input\nexpecting space or \")\""
+readExpr :: String -> String
 readExpr input = case parse parseExpr "lisp" input of
   Left err -> "No match: " ++ show err
   Right val -> "Found value"
@@ -58,11 +59,10 @@ data LispVal
   | Number Integer
   | String String
   | Bool Bool
-  deriving (Show)
 
 -- |
 -- >>> parse parseString "default" "\"hello\""
--- Right (String "hello")
+-- Right "hello'
 -- >>> parse parseString "default" "hello"
 -- Left "default" (line 1, column 1):
 -- unexpected "h"
@@ -76,13 +76,13 @@ parseString = do
 
 -- |
 -- >>> parse parseAtom "default" "hello"
--- Right (Atom "hello")
+-- Right hello
 -- >>> parse parseAtom "default" "he7l8lo"
--- Right (Atom "he7l8lo")
+-- Right he7l8lo
 -- >>> parse parseAtom "default" "he7l8lo#t"
--- Right (Atom "he7l8lo#t")
+-- Right he7l8lo#t
 -- >>> parse parseAtom "default" "#t"
--- Right (Bool True)
+-- Right #t
 -- >>> parse parseAtom "default" "123"
 -- Left "default" (line 1, column 1):
 -- unexpected "1"
@@ -99,9 +99,9 @@ parseAtom = do
 
 -- |
 -- >>> parse parseNumber "default" "123"
--- Right (Number 123)
+-- Right 123
 -- >>> parse parseNumber "default" "123asd"
--- Right (Number 123)
+-- Right 123
 -- >>> parse parseNumber "default" "asd123asd"
 -- Left "default" (line 1, column 1):
 -- unexpected "a"
@@ -126,13 +126,17 @@ parseQuoted = do
 
 -- |
 -- >>> parse parseExpr "default" "\"hello\""
--- Right (String "hello")
+-- Right "hello'
 -- >>> parse parseExpr "default" "hello"
--- Right (Atom "hello")
+-- Right hello
 -- >>> parse parseExpr "default" "123"
--- Right (Number 123)
+-- Right 123
 -- >>> parse parseExpr "default" "true"
--- Right (Atom "true")
+-- Right true
+-- >>> parse parseExpr "default" "(1 2 2)"
+-- Right (1 2 2)
+-- >>> parse parseExpr "default" "'(1 3 (\"this\" \"one\"))"
+-- Right (quote (1 3 ("this' "one')))
 parseExpr :: Parser LispVal
 parseExpr =
   parseAtom
@@ -144,6 +148,21 @@ parseExpr =
       x <- (try parseList) <|> parseDottedList
       char ')'
       return x
+
+
+showVal :: LispVal -> String
+showVal (String contents) = "\"" ++ contents ++ "\'"
+showVal (Atom name) = name
+showVal (Number contents) = show contents
+showVal (Bool True) = "#t"
+showVal (Bool False) = "#f"
+showVal (List contents) = "(" ++ unwordsList contents ++ ")"
+showVal (DottedList head tail) = "(" ++ unwordsList head ++ "." ++ showVal tail ++ ")"
+
+unwordsList :: [LispVal] -> String
+unwordsList = unwords . map showVal
+
+instance Show LispVal where show = showVal
 
 -----------------------------------------------------------------------------
 -- Exercises
