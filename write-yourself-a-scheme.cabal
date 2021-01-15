@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7d8b03087eb68dc84b45ecb257441762f9453a677285ee8631d9fb320495bf17
+-- hash: 9887c3ddeb24fad804fd155475a3c26680529a0e350765a9db0f3209a11a6e1e
 
 name:           write-yourself-a-scheme
 version:        0.1.0.0
@@ -36,6 +36,7 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , mtl
     , parsec
   default-language: Haskell2010
 
@@ -48,6 +49,7 @@ executable write-yourself-a-scheme-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , mtl
     , parsec
     , write-yourself-a-scheme
   default-language: Haskell2010
@@ -63,6 +65,7 @@ test-suite write-yourself-a-scheme-test
   build-depends:
       base >=4.7 && <5
     , doctest >=0.16
+    , mtl
     , parsec
     , write-yourself-a-scheme
   default-language: Haskell2010
