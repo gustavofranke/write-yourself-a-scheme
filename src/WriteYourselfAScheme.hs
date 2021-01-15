@@ -27,17 +27,17 @@ symbol = oneOf "!$%&|*+_/:<=?>@^_~#"
 -- unexpected " "
 -- expecting letter, "\"", digit, "'" or "("
 -- >>> readExpr "(a test)"
--- (a test)
+-- Right (a test)
 -- >>> readExpr "(a (nested) test)"
--- (a (nested) test)
+-- Right (a (nested) test)
 -- >>> readExpr "(a (dotted . list) test)"
--- (a (dotted.list) test)
+-- Right (a (dotted.list) test)
 -- >>> readExpr "(a '(quoted (dotted . list)) test)"
--- (a (quote (quoted (dotted.list))) test)
+-- Right (a (quote (quoted (dotted.list))) test)
 -- >>> readExpr "(a '(imbalanced parens)"
--- "No match: "lisp" (line 1, column 24):
+-- Left Parse error at "lisp" (line 1, column 24):
 -- unexpected end of input
--- expecting space or ")"'
+-- expecting space or ")"
 readExpr :: String -> ThrowsError LispVal
 readExpr input = case parse parseExpr "lisp" input of
   Left err -> throwError $ Parser err
@@ -195,12 +195,42 @@ primitives =
     ("/", numericBinop div),
     ("mod", numericBinop mod),
     ("quotient", numericBinop quot),
-    ("reminder", numericBinop rem)
+    ("reminder", numericBinop rem),
+    ("=", numBoolBinop (==)),
+    ("<", numBoolBinop (<)),
+    (">", numBoolBinop (>)),
+    ("/=", numBoolBinop (/=)),
+    (">=", numBoolBinop (>=)),
+    ("<=", numBoolBinop (<=)),
+    ("&&", boolBoolBinop (&&)),
+    ("||", boolBoolBinop (||)),
+    ("string=?", strBoolBinop (==)),
+    ("string?", strBoolBinop (>)),
+    ("string<=?", strBoolBinop (<=)),
+    ("string>=?", strBoolBinop (>=))
   ]
 
 numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
 numericBinop op singleVal@[_] = throwError $ NumArgs 2 singleVal
 numericBinop op params = mapM unpackNum params >>= return . Number . foldl1 op
+
+boolBinop :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] -> ThrowsError LispVal
+boolBinop unpacker op args =
+  if length args /= 2
+    then throwError $ NumArgs 2 args
+    else do
+      left <- unpacker $ args !! 0
+      right <- unpacker $ args !! 1
+      return $ Bool $ left `op` right
+
+numBoolBinop :: (Integer -> Integer -> Bool) -> [LispVal] -> ThrowsError LispVal
+numBoolBinop = boolBinop unpackNum
+
+strBoolBinop :: (String -> String -> Bool) -> [LispVal] -> ThrowsError LispVal
+strBoolBinop = boolBinop unpackStr
+
+boolBoolBinop :: (Bool -> Bool -> Bool) -> [LispVal] -> ThrowsError LispVal
+boolBoolBinop = boolBinop unpackBool
 
 unpackNum :: LispVal -> ThrowsError Integer
 unpackNum (Number n) = return n
@@ -211,6 +241,16 @@ unpackNum (String n) =
         else return $ fst $ parsed !! 0
 unpackNum (List [n]) = unpackNum n
 unpackNum notNum = throwError $ TypeMismatch "number" notNum
+
+unpackStr :: LispVal -> ThrowsError String
+unpackStr (String s) = return s
+unpackStr (Number s) = return $ show s
+unpackStr (Bool s) = return $ show s
+unpackStr notString = throwError $ TypeMismatch "string" notString
+
+unpackBool :: LispVal -> ThrowsError Bool
+unpackBool (Bool b) = return b
+unpackBool notBool = throwError $ TypeMismatch "boolean" notBool
 
 data LispError
   = NumArgs Integer [LispVal]
@@ -311,3 +351,19 @@ parseNumber1 = many1 digit >>= pure . Number . read
 
 -- 3. Add the symbol-handling functions from R5RS.
 -- A symbol is what we’ve been calling an Atom in our data constructors.
+-----------------------------------------------------------------------------
+-- Exercises
+-- 1. Instead of treating any non-false value as true,
+-- change the definition of if so that the predicate accepts only Bool values and throws an error on any others.
+
+-- 2. equal? has a bug in that a list of values is compared using eqv? instead of equal?.
+-- For example, (equal? ’(1 "2") ’(1 2)) = #f, while you’d expect it to be true.
+-- Change equal? so that it continues to ignore types as it recurses into list structures.
+-- You can either do this explicitly, following the example in eqv?,
+-- or factor the list clause into a separate helper function that is parameterized by the equality testing function.
+
+-- 3. Implement cond and case expressions.
+
+-- 4. Add the rest of the string functions.
+-- You don’t yet know enough to do string-set!;
+-- this is difficult to implement in Haskell, but you’ll have enough information after the next two sections.
