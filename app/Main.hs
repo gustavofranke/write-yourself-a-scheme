@@ -1,6 +1,7 @@
 module Main where
 
-import Lib
+import System.Environment
+import WriteYourselfAScheme
 
 main :: IO ()
-main = someFunc
+main = getArgs >>= putStrLn . show . eval . readExpr . (!! 0)

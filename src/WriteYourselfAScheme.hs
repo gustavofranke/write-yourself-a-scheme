@@ -1,11 +1,9 @@
 module WriteYourselfAScheme where
 
 import Control.Monad
-import System.Environment
+
 import Text.ParserCombinators.Parsec hiding (spaces)
 
--- main0 :: IO ()
-main0 = getArgs >>= putStrLn . show . eval . readExpr . (!! 0)
 -- |
 -- >>> parse symbol "" "$"
 -- Right '$'
@@ -42,7 +40,7 @@ symbol = oneOf "!$%&|*+_/:<=?>@^_~#"
 -- expecting space or ")"'
 readExpr :: String -> LispVal
 readExpr input = case parse parseExpr "lisp" input of
-  Left err -> String $  "No match: " ++ show err
+  Left err -> String $ "No match: " ++ show err
   Right val -> val
 
 -- |
@@ -160,7 +158,6 @@ parseExpr =
       char ')'
       return x
 
-
 showVal :: LispVal -> String
 showVal (String contents) = "\"" ++ contents ++ "\'"
 showVal (Atom name) = name
@@ -180,6 +177,35 @@ eval val@(String _) = val
 eval val@(Number _) = val
 eval val@(Bool _)   = val
 eval (List [Atom "quote", val]) = val
+eval (List (Atom func : args)) = apply func $ map eval args
+
+apply :: String -> [LispVal] -> LispVal
+apply func args = maybe (Bool False) ($ args) $ lookup func primitives
+
+primitives :: [(String, [LispVal] -> LispVal)]
+primitives =
+  [ ("+", numericBinop (+)),
+    ("-", numericBinop (-)),
+    ("*", numericBinop (*)),
+    ("/", numericBinop div),
+    ("mod", numericBinop mod),
+    ("quotient", numericBinop quot),
+    ("reminder", numericBinop rem)
+  ]
+
+numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
+numericBinop op params = Number $ foldl1 op $ map unpackNum params
+
+unpackNum :: LispVal -> Integer
+unpackNum (Number n) = n
+unpackNum (String n) =
+  let parsed = reads n
+   in if null parsed
+        then 0
+        else fst $ parsed !! 0
+
+unpackNum (List [n]) = unpackNum n
+unpackNum _ = 0
 
 -----------------------------------------------------------------------------
 -- Exercises
@@ -236,3 +262,13 @@ parseNumber1 = many1 digit >>= pure . Number . read
 -- Combining the return values of these into either a List or a DottedList is left
 -- as a (somewhat tricky) exercise for the reader:
 -- you may want to break it out into another helper function.
+-----------------------------------------------------------------------------
+-- Exercises
+-- 1. Add primitives to perform the various type-testing functions of R5RS:
+-- symbol?, string?, number?, etc.
+
+-- 2. Change unpackNum so that it always returns 0 if the value is not a number,
+-- even if it’s a string or list that could be parsed as a number.
+
+-- 3. Add the symbol-handling functions from R5RS.
+-- A symbol is what we’ve been calling an Atom in our data constructors.
