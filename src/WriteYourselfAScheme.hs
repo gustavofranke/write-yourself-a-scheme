@@ -110,6 +110,11 @@ parseAtom = do
 parseNumber :: Parser LispVal
 parseNumber = liftM (Number . read) $ many1 digit
 
+-- |
+-- >>> parse parseList "default" "456"
+-- Right (456)
+-- >>> parse parseList "default" "asdf"
+-- Right (asdf)
 parseList :: Parser LispVal
 parseList = liftM List $ sepBy parseExpr spaces
 
@@ -119,6 +124,13 @@ parseDottedList = do
   tail <- char '.' >> spaces >> parseExpr
   return $ DottedList head tail
 
+-- |
+-- >>> parse parseQuoted "default" "'456"
+-- Right (quote 456)
+-- >>> parse parseQuoted "default" "456"
+-- Left "default" (line 1, column 1):
+-- unexpected "4"
+-- expecting "'"
 parseQuoted :: Parser LispVal
 parseQuoted = do
   char '\''
@@ -158,6 +170,11 @@ parseExpr =
       char ')'
       return x
 
+-- |
+-- >>> showVal (String "Hello")
+-- "\"Hello'"
+-- >>> showVal (Bool True)
+-- "#t"
 showVal :: LispVal -> String
 showVal (String contents) = "\"" ++ contents ++ "\'"
 showVal (Atom name) = name
@@ -167,11 +184,21 @@ showVal (Bool False) = "#f"
 showVal (List contents) = "(" ++ unwordsList contents ++ ")"
 showVal (DottedList head tail) = "(" ++ unwordsList head ++ "." ++ showVal tail ++ ")"
 
+-- |
+-- >>> unwordsList [Bool True, Bool False]
+-- "#t #f"
+-- >>> unwordsList [String "Hello", String "world"]
+-- "\"Hello' \"world'"
 unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
 
 instance Show LispVal where show = showVal
 
+-- |
+-- >>> eval (Bool True)
+-- Right #t
+-- >>> eval (String "Hello")
+-- Right "Hello'
 eval :: LispVal -> ThrowsError LispVal
 eval val@(String _) = return val
 eval val@(Number _) = return val
@@ -180,6 +207,11 @@ eval (List [Atom "quote", val]) = return val
 eval (List (Atom func : args)) = mapM eval args >>= apply func
 eval badForm = throwError $ BadSpecialForm "Unrecognized special form" badForm
 
+-- |
+-- >>> apply "+" [Number 4, Number 7]
+-- Right 11
+-- >>> apply "asdf" [String "Hello", String "world"]
+-- Left Unrecognized primitive functions args: "asdf"
 apply :: String -> [LispVal] -> ThrowsError LispVal
 apply func args =
   maybe
