@@ -1,7 +1,7 @@
 module WriteYourselfAScheme where
 
 import Control.Monad
-import Control.Monad.Except
+import Control.Monad.Error
 import Text.ParserCombinators.Parsec hiding (spaces)
 
 -- |
@@ -274,9 +274,9 @@ showError (Parser parseErr) = "Parse error at " ++ show parseErr
 
 instance Show LispError where show = showError
 
--- instance Except LispError where
--- noMsg = Default "An error has occurred"
--- strMsg = Default
+instance Error LispError where
+  noMsg = Default "An error has occurred"
+  strMsg = Default
 
 type ThrowsError = Either LispError
 
