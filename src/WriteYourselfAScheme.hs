@@ -262,15 +262,29 @@ boolBinop unpacker op args =
       right <- unpacker $ args !! 1
       return $ Bool $ left `op` right
 
+-- |
+-- >>> numBoolBinop (>) [Number 7, Number 4]
+-- Right #t
 numBoolBinop :: (Integer -> Integer -> Bool) -> [LispVal] -> ThrowsError LispVal
 numBoolBinop = boolBinop unpackNum
 
+-- |
+-- >>> strBoolBinop (==) [String "Hello", String "Hello"]
+-- Right #t
 strBoolBinop :: (String -> String -> Bool) -> [LispVal] -> ThrowsError LispVal
 strBoolBinop = boolBinop unpackStr
 
+-- |
+-- >>> boolBoolBinop (||) [Bool True, Bool False]
+-- Right #t
 boolBoolBinop :: (Bool -> Bool -> Bool) -> [LispVal] -> ThrowsError LispVal
 boolBoolBinop = boolBinop unpackBool
 
+-- |
+-- >>> unpackNum (Number 7)
+-- Right 7
+-- >>> unpackNum (String "7")
+-- Right 7
 unpackNum :: LispVal -> ThrowsError Integer
 unpackNum (Number n) = return n
 unpackNum (String n) =
