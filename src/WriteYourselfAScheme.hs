@@ -300,22 +300,42 @@ unpackNum (String n) =
 unpackNum (List [n]) = unpackNum n
 unpackNum notNum = throwError $ TypeMismatch "number" notNum
 
+-- |
+-- >>> unpackStr (Number 7)
+-- Right "7"
+-- >>> unpackStr (String "7")
+-- Right "7"
 unpackStr :: LispVal -> ThrowsError String
 unpackStr (String s) = return s
 unpackStr (Number s) = return $ show s
 unpackStr (Bool s) = return $ show s
 unpackStr notString = throwError $ TypeMismatch "string" notString
 
+-- |
+-- >>> unpackBool (Number 7)
+-- Left Invalid type: expected boolean, found 7
+-- >>> unpackBool (Bool True)
+-- Right True
 unpackBool :: LispVal -> ThrowsError Bool
 unpackBool (Bool b) = return b
 unpackBool notBool = throwError $ TypeMismatch "boolean" notBool
 
+-- |
+-- >>> car [(List [String "Hello", String "world"])]
+-- Right "Hello'
+-- >>> car [(DottedList [String "Hello", String "world"] (Bool True))]
+-- Right "Hello'
 car :: [LispVal] -> ThrowsError LispVal
 car [List (x : xs)] = return x
 car [DottedList (x : xs) _] = return x
 car [badArg] = throwError $ TypeMismatch "pair" badArg
 car badArgList = throwError $ NumArgs 1 badArgList
 
+-- |
+-- >>> cdr [(List [String "Hello", String "world"])]
+-- Right ("world')
+-- >>> cdr [(DottedList [String "Hello", String "world"] (Bool True))]
+-- Right ("world'.#t)
 cdr :: [LispVal] -> ThrowsError LispVal
 cdr [List (x : xs)] = return $ List xs
 cdr [DottedList (_ : xs) x] = return $ DottedList xs x
@@ -323,6 +343,11 @@ cdr [DottedList [xs] x] = return x
 cdr [badArg] = throwError $ TypeMismatch " pair" badArg
 cdr badArgList = throwError $ NumArgs 1 badArgList
 
+-- |
+-- >>> cons [(List [String "Hello", String "world"]), List []]
+-- Right (("Hello' "world'))
+-- >>> cons [(String "ASdf"), (List [String "Hello", String "world"])]
+-- Right ("ASdf' "Hello' "world')
 cons :: [LispVal] -> ThrowsError LispVal
 cons [x1, List []] = return $ List [x1]
 cons [x, List xs] = return $ List $ [x] ++ xs
@@ -330,6 +355,11 @@ cons [x, DottedList xs xlast] = return $ DottedList ([x] ++ xs) xlast
 cons [x1, x2] = return $ DottedList [x1] x2
 cons badArgList = throwError $ NumArgs 2 badArgList
 
+-- |
+-- >>> eqv [(String "Hello"), (String "Hello")]
+-- Right #t
+-- >>> eqv [(List [String "Hello", String "world"]), (List [String "Hello", String "world"])]
+-- Right #t
 eqv :: [LispVal] -> ThrowsError LispVal
 eqv [(Bool arg1), (Bool arg2)] = return $ Bool $ arg1 == arg2
 eqv [(Number arg1), (Number arg2)] = return $ Bool $ arg1 == arg2
