@@ -17,43 +17,38 @@ import Text.ParserCombinators.Parsec hiding (spaces)
 symbol :: Parser Char
 symbol = oneOf "!$%&|*+-/:<=?>@^_~#"
 
--- -- |
--- -- >>> readExpr "     $"
--- -- Left Parse error at "lisp" (line 1, column 1):
--- -- unexpected " "
--- -- expecting letter, "\"", digit, "'" or "("
--- -- >>> readExpr "     !"
--- -- Left Parse error at "lisp" (line 1, column 1):
--- -- unexpected " "
--- -- expecting letter, "\"", digit, "'" or "("
--- -- >>> readExpr "     %"
--- -- Left Parse error at "lisp" (line 1, column 1):
--- -- unexpected " "
--- -- expecting letter, "\"", digit, "'" or "("
--- -- >>> readExpr "(a test)"
--- -- Right (a test)
--- -- >>> readExpr "(a (nested) test)"
--- -- Right (a (nested) test)
--- -- >>> readExpr "(a (dotted . list) test)"
--- -- Right (a (dotted.list) test)
--- -- >>> readExpr "(a '(quoted (dotted . list)) test)"
--- -- Right (a (quote (quoted (dotted.list))) test)
--- -- >>> readExpr "(a '(imbalanced parens)"
--- -- Left Parse error at "lisp" (line 1, column 24):
--- -- unexpected end of input
--- -- expecting space or ")"
--- readExpr :: String -> ThrowsError LispVal
--- readExpr input = case parse parseExpr "lisp" input of
---   Left err -> throwError $ Parser err
---   Right val -> return val
+-- |
+-- >>> readExpr "     $"
+-- Left Parse error at "lisp" (line 1, column 1):
+-- unexpected " "
+-- expecting letter, "\"", digit, "'" or "("
+-- >>> readExpr "     !"
+-- Left Parse error at "lisp" (line 1, column 1):
+-- unexpected " "
+-- expecting letter, "\"", digit, "'" or "("
+-- >>> readExpr "     %"
+-- Left Parse error at "lisp" (line 1, column 1):
+-- unexpected " "
+-- expecting letter, "\"", digit, "'" or "("
+-- >>> readExpr "(a test)"
+-- Right (a test)
+-- >>> readExpr "(a (nested) test)"
+-- Right (a (nested) test)
+-- >>> readExpr "(a (dotted . list) test)"
+-- Right (a (dotted.list) test)
+-- >>> readExpr "(a '(quoted (dotted . list)) test)"
+-- Right (a (quote (quoted (dotted.list))) test)
+-- >>> readExpr "(a '(imbalanced parens)"
+-- Left Parse error at "lisp" (line 1, column 24):
+-- unexpected end of input
+-- expecting space or ")"
+readExpr :: String -> ThrowsError LispVal
+readExpr = readOrThrow parseExpr
 
 readOrThrow :: Parser a -> String -> ThrowsError a
 readOrThrow parser input = case parse parser "lisp" input of
   Left err -> throwError $ Parser err
   Right val -> return val
-
-readExpr :: String -> ThrowsError LispVal
-readExpr = readOrThrow parseExpr
 
 readExprList :: String -> ThrowsError [LispVal]
 readExprList = readOrThrow (endBy parseExpr spaces)
@@ -221,15 +216,15 @@ showVal (IOFunc _) = "<IO primitive>"
 unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
 
-instance Show LispVal where show = showVal
+instance Show LispVal where show = showVal  
 
 -- |
--- ------>>> eval (Bool True)
--- ------Right #t
--- ------>>> eval (String "Hello")
--- ------Right "Hello'
--- ------>>> eval (List [Atom "if", (Bool True), (String "Hello"), (String "No no")])
--- ------Right "Hello'
+-- --->>> nullEnv >>= (\e -> runErrorT $ eval e (Bool True))
+-- ---Right #t
+-- --->>> nullEnv >>= (\e -> runErrorT $ eval e (String "Hello"))
+-- ---Right "Hello'
+-- --->>> nullEnv >>= (\e -> runErrorT $ eval e (List [Atom "if", (Bool True), (String "Hello"), (String "No no")]))
+-- ---Right "Hello'
 eval :: Env -> LispVal -> IOThrowsError LispVal
 eval env val@(String _) = return val
 eval env val@(Number _) = return val
@@ -273,12 +268,6 @@ apply (Func params varargs body closure) args =
     bindVarArgs arg env = case arg of
       Just argName -> liftIO $ bindVars env [(argName, List $ remainingArgs)]
       Nothing -> return env
-
--- apply func args =
---   maybe
---     (throwError $ NotFunction "Unrecognized primitive functions args" func)
---     ($ args)
---     $ lookup func primitives
 
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives =
@@ -437,6 +426,9 @@ unpackEquals arg1 arg2 (AnyUnpacker unpacker) = do
   unpacked2 <- unpacker arg2
   return (unpacked1 == unpacked2) `catchError` (const $ return False)
 
+-- |
+-- >>> equal []
+-- Left Expected 2 args: found values
 equal :: [LispVal] -> ThrowsError LispVal
 equal [arg1, arg2] = do
   primitiveEquals <-
