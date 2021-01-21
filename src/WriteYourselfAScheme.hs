@@ -3,7 +3,7 @@
 module WriteYourselfAScheme where
 
 import Control.Monad
-import Control.Monad.Error
+import Control.Monad.Except
 import Data.IORef
 import System.IO hiding (try)
 import Text.ParserCombinators.Parsec hiding (spaces)
@@ -219,12 +219,12 @@ unwordsList = unwords . map showVal
 instance Show LispVal where show = showVal  
 
 -- |
--- --->>> nullEnv >>= (\e -> runErrorT $ eval e (Bool True))
--- ---Right #t
--- --->>> nullEnv >>= (\e -> runErrorT $ eval e (String "Hello"))
--- ---Right "Hello'
--- --->>> nullEnv >>= (\e -> runErrorT $ eval e (List [Atom "if", (Bool True), (String "Hello"), (String "No no")]))
--- ---Right "Hello'
+-- >>> nullEnv >>= (\e -> runExceptT $ eval e (Bool True))
+-- Right #t
+-- >>> nullEnv >>= (\e -> runExceptT $ eval e (String "Hello"))
+-- Right "Hello'
+-- >>> nullEnv >>= (\e -> runExceptT $ eval e (List [Atom "if", (Bool True), (String "Hello"), (String "No no")]))
+-- Right "Hello'
 eval :: Env -> LispVal -> IOThrowsError LispVal
 eval env val@(String _) = return val
 eval env val@(Number _) = return val
@@ -462,9 +462,9 @@ showError (Parser parseErr) = "Parse error at " ++ show parseErr
 
 instance Show LispError where show = showError
 
-instance Error LispError where
-  noMsg = Default "An error has occurred"
-  strMsg = Default
+-- instance Except LispError where
+--   noMsg = Default "An error has occurred"
+--   strMsg = Default
 
 type ThrowsError = Either LispError
 
@@ -539,14 +539,14 @@ load filename = (liftIO $ readFile filename) >>= liftThrows . readExprList
 readAll :: [LispVal] -> IOThrowsError LispVal
 readAll [String filename] = liftM List $ load filename
 
-type IOThrowsError = ErrorT LispError IO
+type IOThrowsError = ExceptT LispError IO
 
 liftThrows :: ThrowsError a -> IOThrowsError a
 liftThrows (Left err) = throwError err
 liftThrows (Right val) = return val
 
 runIOThrows :: IOThrowsError String -> IO String
-runIOThrows action = runErrorT (trapError action) >>= return . extractValue
+runIOThrows action = runExceptT (trapError action) >>= return . extractValue
 
 isBound :: Env -> String -> IO Bool
 isBound envRef var = readIORef envRef >>= return . maybe False (const True) . lookup var
@@ -603,10 +603,10 @@ ioPrimitives = [
 makeFunc :: Monad m => Maybe String -> Env -> [LispVal] -> [LispVal] -> m LispVal
 makeFunc varargs env params body = return $ Func (map showVal params) varargs body env
 
-makeNormalFunc :: Env -> [LispVal] -> [LispVal] -> ErrorT LispError IO LispVal
+makeNormalFunc :: Env -> [LispVal] -> [LispVal] -> ExceptT LispError IO LispVal
 makeNormalFunc = makeFunc Nothing
 
-makeVarargs :: LispVal -> Env -> [LispVal] -> [LispVal] -> ErrorT LispError IO LispVal
+makeVarargs :: LispVal -> Env -> [LispVal] -> [LispVal] -> ExceptT LispError IO LispVal
 makeVarargs = makeFunc . Just . showVal
 
 -----------------------------------------------------------------------------
