@@ -4,10 +4,11 @@ module WriteYourselfAScheme where
 
 import Control.Monad
 import Control.Monad.Except
+import Data.Functor
 import Data.IORef
+import Data.Maybe
 import System.IO hiding (try)
 import Text.ParserCombinators.Parsec hiding (spaces)
-import Data.Maybe
 
 -- |
 -- >>> parse symbol "" "$"
@@ -217,7 +218,7 @@ showVal (IOFunc _) = "<IO primitive>"
 unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
 
-instance Show LispVal where show = showVal  
+instance Show LispVal where show = showVal
 
 -- |
 -- >>> nullEnv >>= (\e -> runExceptT $ eval e (Bool True))
@@ -301,7 +302,7 @@ primitives =
 
 numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
 numericBinop op singleVal@[_] = throwError $ NumArgs 2 singleVal
-numericBinop op params = mapM unpackNum params >>= return . Number . foldl1 op
+numericBinop op params = mapM unpackNum params <&> (Number . foldl1 op)
 
 boolBinop :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] -> ThrowsError LispVal
 boolBinop unpacker op args =
@@ -433,8 +434,8 @@ unpackEquals arg1 arg2 (AnyUnpacker unpacker) = do
 equal :: [LispVal] -> ThrowsError LispVal
 equal [arg1, arg2] = do
   primitiveEquals <-
-    fmap or $
-      mapM
+    or
+      <$> mapM
         (unpackEquals arg1 arg2)
         [AnyUnpacker unpackNum, AnyUnpacker unpackStr, AnyUnpacker unpackBool]
   eqvEquals <- eqv [arg1, arg2]
@@ -485,7 +486,7 @@ evalAndPrint :: Env -> String -> IO ()
 evalAndPrint env expr = evalString env expr >>= putStrLn
 
 evalString :: Env -> String -> IO String
-evalString env expr = runIOThrows $ fmap show $ (liftThrows $ readExpr expr) >>= eval env
+evalString env expr = runIOThrows $ fmap show $ liftThrows (readExpr expr) >>= eval env
 
 until_ :: Monad m => (a -> Bool) -> m a -> (a -> m ()) -> m ()
 until_ pred prompt action = do
@@ -547,10 +548,10 @@ liftThrows (Left err) = throwError err
 liftThrows (Right val) = return val
 
 runIOThrows :: IOThrowsError String -> IO String
-runIOThrows action = runExceptT (trapError action) >>= return . extractValue
+runIOThrows action = runExceptT (trapError action) <&> extractValue
 
 isBound :: Env -> String -> IO Bool
-isBound envRef var = readIORef envRef >>= return . isJust . lookup var
+isBound envRef var = readIORef envRef <&> isJust . lookup var
 
 getVar :: Env -> String -> IOThrowsError LispVal
 getVar envRef var = do
@@ -589,8 +590,8 @@ bindVars envRef bindings = readIORef envRef >>= extendEnv bindings >>= newIORef
       return (var, ref)
 
 ioPrimitives :: [(String, [LispVal] -> IOThrowsError LispVal)]
-ioPrimitives = [
-    ("apply", applyProc),
+ioPrimitives =
+  [ ("apply", applyProc),
     ("open-input-file", makePort ReadMode),
     ("open-output-file", makePort WriteMode),
     ("close-input-port", closePort),
