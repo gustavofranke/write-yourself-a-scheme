@@ -110,7 +110,7 @@ parseAtom = do
   return $ case atom of
     "#t" -> Bool True
     "#f" -> Bool False
-    otherwise -> Atom atom
+    _ -> Atom atom
 
 -- |
 -- >>> parse parseNumber "default" "123"
@@ -122,7 +122,7 @@ parseAtom = do
 -- unexpected "a"
 -- expecting digit
 parseNumber :: Parser LispVal
-parseNumber = liftM (Number . read) $ many1 digit
+parseNumber = fmap (Number . read) $ many1 digit
 
 -- |
 -- >>> parse parseList "default" "456"
@@ -130,7 +130,7 @@ parseNumber = liftM (Number . read) $ many1 digit
 -- >>> parse parseList "default" "asdf"
 -- Right (asdf)
 parseList :: Parser LispVal
-parseList = liftM List $ sepBy parseExpr spaces
+parseList = fmap List $ sepBy parseExpr spaces
 
 parseDottedList :: Parser LispVal
 parseDottedList = do
@@ -235,8 +235,8 @@ eval env (List [Atom "if", pred, conseq, alt]) = do
   result <- eval env pred
   case result of
     Bool False -> eval env alt
-    otherwise -> eval env conseq
-eval env (List [Atom "load", String filename]) = load filename >>= liftM last . mapM (eval env)
+    _ -> eval env conseq
+eval env (List [Atom "load", String filename]) = load filename >>= fmap last . mapM (eval env)
 eval env (List [Atom "set!", Atom var, form]) = eval env form >>= setVar env var
 eval env (List [Atom "define", Atom var, form]) = eval env form >>= defineVar env var
 eval env (List (Atom "define" : List (Atom var : params) : body)) = makeNormalFunc env params body >>= defineVar env var
@@ -264,7 +264,7 @@ apply (Func params varargs body closure) args =
   where
     remainingArgs = drop (length params) args
     num = toInteger . length
-    evalBody env = liftM last $ mapM (eval env) body
+    evalBody env = fmap last $ mapM (eval env) body
     bindVarArgs arg env = case arg of
       Just argName -> liftIO $ bindVars env [(argName, List $ remainingArgs)]
       Nothing -> return env
@@ -432,7 +432,7 @@ unpackEquals arg1 arg2 (AnyUnpacker unpacker) = do
 equal :: [LispVal] -> ThrowsError LispVal
 equal [arg1, arg2] = do
   primitiveEquals <-
-    liftM or $
+    fmap or $
       mapM
         (unpackEquals arg1 arg2)
         [AnyUnpacker unpackNum, AnyUnpacker unpackStr, AnyUnpacker unpackBool]
@@ -484,7 +484,7 @@ evalAndPrint :: Env -> String -> IO ()
 evalAndPrint env expr = evalString env expr >>= putStrLn
 
 evalString :: Env -> String -> IO String
-evalString env expr = runIOThrows $ liftM show $ (liftThrows $ readExpr expr) >>= eval env
+evalString env expr = runIOThrows $ fmap show $ (liftThrows $ readExpr expr) >>= eval env
 
 until_ :: Monad m => (a -> Bool) -> m a -> (a -> m ()) -> m ()
 until_ pred prompt action = do
@@ -496,7 +496,7 @@ until_ pred prompt action = do
 runOne :: [String] -> IO ()
 runOne args = do
   env <- primitiveBindings >>= flip bindVars [("args", List $ map String $ drop 1 args)]
-  (runIOThrows $ liftM show $ eval env (List [Atom "load", String (args !! 0)])) >>= hPutStrLn stderr
+  (runIOThrows $ fmap show $ eval env (List [Atom "load", String (args !! 0)])) >>= hPutStrLn stderr
 
 runRepl :: IO ()
 runRepl = primitiveBindings >>= until_ (== "quit") (readPrompt "Lisp>>> ") . evalAndPrint
@@ -516,7 +516,7 @@ applyProc [func, List args] = apply func args
 applyProc (func : args) = apply func args
 
 makePort :: IOMode -> [LispVal] -> IOThrowsError LispVal
-makePort mode [String filename] = liftM Port $ liftIO $ openFile filename mode
+makePort mode [String filename] = fmap Port $ liftIO $ openFile filename mode
 
 closePort :: [LispVal] -> IOThrowsError LispVal
 closePort [Port port] = liftIO $ hClose port >> (return $ Bool True)
@@ -531,13 +531,13 @@ writeProc [obj] = writeProc [obj, Port stdout]
 writeProc [obj, Port port] = liftIO $ hPrint port obj >> (return $ Bool True)
 
 readContents :: [LispVal] -> IOThrowsError LispVal
-readContents [String filename] = liftM String $ liftIO $ readFile filename
+readContents [String filename] = fmap String $ liftIO $ readFile filename
 
 load :: String -> IOThrowsError [LispVal]
 load filename = (liftIO $ readFile filename) >>= liftThrows . readExprList
 
 readAll :: [LispVal] -> IOThrowsError LispVal
-readAll [String filename] = liftM List $ load filename
+readAll [String filename] = fmap List $ load filename
 
 type IOThrowsError = ExceptT LispError IO
 
@@ -582,7 +582,7 @@ defineVar envRef var value = do
 bindVars :: Env -> [(String, LispVal)] -> IO Env
 bindVars envRef bindings = readIORef envRef >>= extendEnv bindings >>= newIORef
   where
-    extendEnv bindings env = liftM (++ env) (mapM addBinding bindings)
+    extendEnv bindings env = fmap (++ env) (mapM addBinding bindings)
     addBinding (var, value) = do
       ref <- newIORef value
       return (var, ref)
