@@ -384,8 +384,8 @@ car badArgList = throwError $ NumArgs 1 badArgList
 -- Right ("world'.#t)
 cdr :: [LispVal] -> ThrowsError LispVal
 cdr [List (x : xs)] = return $ List xs
-cdr [DottedList (_ : xs) x] = return $ DottedList xs x
 cdr [DottedList [xs] x] = return x
+cdr [DottedList (_ : xs) x] = return $ DottedList xs x
 cdr [badArg] = throwError $ TypeMismatch " pair" badArg
 cdr badArgList = throwError $ NumArgs 1 badArgList
 
@@ -622,7 +622,7 @@ parseNumber0 = do
 
 -- (b) explicit sequencing with the >>= operator.
 parseNumber1 :: Parser LispVal
-parseNumber1 = many1 digit >>= pure . Number . read
+parseNumber1 = many1 digit <&> Number . read
 
 -- 2. Our strings aren’t quite R5RS compliant,
 -- because they don’t support escaping of internal quotes within the string.
