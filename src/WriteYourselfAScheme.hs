@@ -251,10 +251,10 @@ eval env (List (function : args)) = do
 eval env badForm = throwError $ BadSpecialForm "Unrecognized special form" badForm
 
 -- |
--- ----- >>> apply "+" [Number 4, Number 7]
--- ----- Right 11
--- ----- >>> apply "asdf" [String "Hello", String "world"]
--- ----- Left Unrecognized primitive functions args: "asdf"
+-- >>> runExceptT(apply (PrimitiveFunc (numericBinop (+))) [Number 4, Number 7])
+-- Right 11
+-- >>> runExceptT(apply (PrimitiveFunc (numBoolBinop (>))) [Number 4, Number 7])
+-- Right #f
 apply :: LispVal -> [LispVal] -> IOThrowsError LispVal
 apply (PrimitiveFunc func) args = liftThrows $ func args
 apply (Func params varargs body closure) args =
