@@ -631,6 +631,22 @@ parseNumber1 = many1 digit <&> Number . read
 -- either a non-quote character or a backslash followed by a quote mark.
 
 -- 3. Modify the previous exercise to support \n, \r, \t, \\, and any other desired escape characters.
+-- |
+-- >>> parse parseString1 "default" "\"hello\""
+-- Right "hello'
+-- >>> parse parseString1 "default" "\"hello\nhello\""
+-- Right "hello
+-- hello'
+-- >>> parse parseString1 "default" "\"hello\thello\""
+-- Right "hello	hello'
+-- >>> parse parseString1 "default" "\"hello\\hello\""
+-- Right "hello\hello'
+parseString1 :: Parser LispVal
+parseString1 = do
+  char '"'
+  x <- many (noneOf "\"" <|> oneOf "\n\r\t\\")
+  char '"'
+  return $ String x
 
 -- 4. Change parseNumber to support the Scheme standard for different bases.
 -- You may find the readOct and readHex functions useful.
