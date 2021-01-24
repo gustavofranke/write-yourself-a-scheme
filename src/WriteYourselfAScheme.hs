@@ -485,6 +485,11 @@ readPrompt prompt = flushStr prompt >> getLine
 evalAndPrint :: Env -> String -> IO ()
 evalAndPrint env expr = evalString env expr >>= putStrLn
 
+-- |
+-- >>> primitiveBindings >>= (\e -> evalString e "(+ 2 3)")
+-- "5"
+-- >>> primitiveBindings >>= (\e -> evalString e "(define (factorial x) (if (= x 1) 1 (* x (factorial (- x 1)))))")
+-- "(lambda (\"x\") ...)"
 evalString :: Env -> String -> IO String
 evalString env expr = runIOThrows $ fmap show $ liftThrows (readExpr expr) >>= eval env
 
