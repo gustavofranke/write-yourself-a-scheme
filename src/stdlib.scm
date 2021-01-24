@@ -27,7 +27,7 @@
     (f (apply g arg))))
 
 (define zero?
-  (curry < 0))
+  (curry = 0))
 
 (define positive?
   (curry < 0))
