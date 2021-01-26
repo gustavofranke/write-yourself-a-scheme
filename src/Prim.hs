@@ -2,9 +2,12 @@
 
 module Prim where
 
-import Control.Monad.Except
-import Data.Functor
+import Control.Monad.Except ( MonadError(catchError, throwError) )
+import Data.Functor ( (<&>) )
 import LispVal
+    ( ThrowsError,
+      LispError(TypeMismatch, NumArgs),
+      LispVal(Bool, Atom, DottedList, List, String, Number) )
 
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives =
@@ -36,7 +39,7 @@ primitives =
   ]
 
 numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
-numericBinop op singleVal@[_] = throwError $ NumArgs 2 singleVal
+numericBinop _ singleVal@[_] = throwError $ NumArgs 2 singleVal
 numericBinop op params = mapM unpackNum params <&> (Number . foldl1 op)
 
 boolBinop :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] -> ThrowsError LispVal
@@ -72,8 +75,8 @@ boolBoolBinop = boolBinop unpackBool
 -- >>> car [(DottedList [String "Hello", String "world"] (Bool True))]
 -- Right "Hello'
 car :: [LispVal] -> ThrowsError LispVal
-car [List (x : xs)] = return x
-car [DottedList (x : xs) _] = return x
+car [List (x : _)] = return x
+car [DottedList (x : _) _] = return x
 car [badArg] = throwError $ TypeMismatch "pair" badArg
 car badArgList = throwError $ NumArgs 1 badArgList
 
@@ -83,8 +86,8 @@ car badArgList = throwError $ NumArgs 1 badArgList
 -- >>> cdr [(DottedList [String "Hello", String "world"] (Bool True))]
 -- Right ("world'.#t)
 cdr :: [LispVal] -> ThrowsError LispVal
-cdr [List (x : xs)] = return $ List xs
-cdr [DottedList [xs] x] = return x
+cdr [List (_ : xs)] = return $ List xs
+cdr [DottedList [_] x] = return x
 cdr [DottedList (_ : xs) x] = return $ DottedList xs x
 cdr [badArg] = throwError $ TypeMismatch " pair" badArg
 cdr badArgList = throwError $ NumArgs 1 badArgList
@@ -115,8 +118,9 @@ eqv [(DottedList xs x), (DottedList ys y)] = eqv [List $ xs ++ [x], List $ ys ++
 eqv [(List arg1), (List arg2)] = return $ Bool $ (length arg1 == length arg2) && all eqvPair (zip arg1 arg2)
   where
     eqvPair (x1, x2) = case eqv [x1, x2] of
-      Left err -> False
+      Left _ -> False
       Right (Bool val) -> val
+      Right _ -> False
 eqv [_, _] = return $ Bool False
 eqv badArgList = throwError $ NumArgs 2 badArgList
 
@@ -131,7 +135,7 @@ equal [arg1, arg2] = do
         (unpackEquals arg1 arg2)
         [AnyUnpacker unpackNum, AnyUnpacker unpackStr, AnyUnpacker unpackBool]
   eqvEquals <- eqv [arg1, arg2]
-  return $ Bool $ (primitiveEquals || let (Bool x) = eqvEquals in x)
+  return $ Bool (primitiveEquals || let (Bool x) = eqvEquals in x)
 equal badArgList = throwError $ NumArgs 2 badArgList
 
 -- |

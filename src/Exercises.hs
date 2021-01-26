@@ -38,9 +38,9 @@ parseNumber1 = many1 digit <&> Number . read
 -- Right "hello\hello'
 parseString1 :: Parser LispVal
 parseString1 = do
-  char '"'
+  _ <- char '"'
   x <- many (noneOf "\"" <|> oneOf "\n\r\t\\")
-  char '"'
+  _ <- char '"'
   return $ String x
 
 -- 4. Change parseNumber to support the Scheme standard for different bases.

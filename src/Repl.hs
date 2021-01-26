@@ -1,22 +1,37 @@
 module Repl where
 
 import Control.Monad.Except
-import Data.Functor
-import Data.IORef
-import Eval
+    ( runExceptT, MonadIO(liftIO), MonadError(catchError) )
+import Data.Functor ( (<&>) )
+import Data.IORef ( newIORef )
+import Eval ( apply, bindVars, eval, liftThrows, load, readExpr )
 import LispVal
-import Prim
+    ( ThrowsError,
+      LispVal(String, IOFunc, PrimitiveFunc, Port, Bool, List, Atom),
+      Env,
+      IOThrowsError )
+import Prim ( primitives )
 import System.IO
+    ( hClose,
+      hFlush,
+      openFile,
+      stderr,
+      stdin,
+      stdout,
+      hGetLine,
+      hPutStrLn,
+      hPrint,
+      IOMode(WriteMode, ReadMode) )
 
 runRepl :: IO ()
 runRepl = primitiveBindings >>= until_ (== "quit") (readPrompt "Lisp>>> ") . evalAndPrint
 
 until_ :: Monad m => (a -> Bool) -> m a -> (a -> m ()) -> m ()
-until_ pred prompt action = do
+until_ predi prompt action = do
   result <- prompt
-  if pred result
+  if predi result
     then return ()
-    else action result >> until_ pred prompt action
+    else action result >> until_ predi prompt action
 
 nullEnv :: IO Env
 nullEnv = newIORef []

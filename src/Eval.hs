@@ -1,13 +1,34 @@
 module Eval where
 
 import Control.Monad.Except
-import Data.Functor
-import Data.IORef
-import Data.Maybe
+  ( ExceptT,
+    MonadError (throwError),
+    MonadIO (liftIO),
+    runExceptT
+  )
+import Data.Functor ((<&>))
+import Data.IORef (newIORef, readIORef, writeIORef)
+import Data.Maybe (isJust, isNothing)
 import LispVal
-import Parser
+  ( Env,
+    IOThrowsError,
+    LispError (BadSpecialForm, NumArgs, Parser, UnboundVar),
+    LispVal
+      ( Atom,
+        Bool,
+        DottedList,
+        Func,
+        List,
+        Number,
+        PrimitiveFunc,
+        String
+      ),
+    ThrowsError,
+    showVal,
+  )
+import Parser (parseExpr, spaces)
 import Prim
-import Text.ParserCombinators.Parsec hiding (spaces)
+import Text.ParserCombinators.Parsec (Parser, endBy, parse)
 
 -- |
 -- >>> newIORef [] >>= (\e -> runExceptT $ eval e (Bool True))
@@ -17,13 +38,13 @@ import Text.ParserCombinators.Parsec hiding (spaces)
 -- >>> newIORef [] >>= (\e -> runExceptT $ eval e (List [Atom "if", (Bool True), (String "Hello"), (String "No no")]))
 -- Right "Hello'
 eval :: Env -> LispVal -> IOThrowsError LispVal
-eval env val@(String _) = return val
-eval env val@(Number _) = return val
-eval env val@(Bool _) = return val
-eval env (Atom id) = getVar env id
-eval env (List [Atom "quote", val]) = return val
-eval env (List [Atom "if", pred, conseq, alt]) = do
-  result <- eval env pred
+eval _ val@(String _) = return val
+eval _ val@(Number _) = return val
+eval _ val@(Bool _) = return val
+eval env (Atom ident) = getVar env ident
+eval _ (List [Atom "quote", val]) = return val
+eval env (List [Atom "if", predi, conseq, alt]) = do
+  result <- eval env predi
   case result of
     Bool False -> eval env alt
     _ -> eval env conseq
@@ -39,7 +60,7 @@ eval env (List (function : args)) = do
   func <- eval env function
   argVals <- mapM (eval env) args
   apply func argVals
-eval env badForm = throwError $ BadSpecialForm "Unrecognized special form" badForm
+eval _ badForm = throwError $ BadSpecialForm "Unrecognized special form" badForm
 
 makeFunc :: Monad m => Maybe String -> Env -> [LispVal] -> [LispVal] -> m LispVal
 makeFunc varargs env params body = return $ Func (map showVal params) varargs body env
@@ -118,7 +139,7 @@ apply (Func params varargs body closure) args =
 bindVars :: Env -> [(String, LispVal)] -> IO Env
 bindVars envRef bindings = readIORef envRef >>= extendEnv bindings >>= newIORef
   where
-    extendEnv bindings env = fmap (++ env) (mapM addBinding bindings)
+    extendEnv binds env = fmap (++ env) (mapM addBinding binds)
     addBinding (var, value) = do
       ref <- newIORef value
       return (var, ref)

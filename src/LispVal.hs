@@ -1,9 +1,9 @@
 module LispVal where
 
-import Control.Monad.Except
-import Data.IORef
-import System.IO
-import Text.Parsec
+import Control.Monad.Except (ExceptT)
+import Data.IORef (IORef)
+import System.IO (Handle)
+import Text.Parsec (ParseError)
 
 type IOThrowsError = ExceptT LispError IO
 
@@ -35,9 +35,9 @@ showVal (Number contents) = show contents
 showVal (Bool True) = "#t"
 showVal (Bool False) = "#f"
 showVal (List contents) = "(" ++ unwordsList contents ++ ")"
-showVal (DottedList head tail) = "(" ++ unwordsList head ++ "." ++ showVal tail ++ ")"
+showVal (DottedList head0 tail0) = "(" ++ unwordsList head0 ++ "." ++ showVal tail0 ++ ")"
 showVal (PrimitiveFunc _) = "<primitive>"
-showVal Func {params = args, vararg = varargs, body = body, closure = env} =
+showVal Func {params = args, vararg = varargs, body = _, closure = _} =
   "(lambda (" ++ unwords (map show args)
     ++ ( case varargs of
            Nothing -> ""
@@ -74,6 +74,7 @@ showError (NumArgs expected found) =
     ++ unwordsList found
 showError (TypeMismatch expected found) = "Invalid type: expected " ++ expected ++ ", found " ++ show found
 showError (Parser parseErr) = "Parse error at " ++ show parseErr
+showError (Default err) = "Default error at " ++ show err
 
 instance Show LispError where show = showError
 

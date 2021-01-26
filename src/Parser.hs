@@ -50,9 +50,9 @@ parseExpr =
     <|> parseNumber
     <|> parseQuoted
     <|> do
-      char '('
+      _ <- char '('
       x <- try parseList <|> parseDottedList
-      char ')'
+      _ <- char ')'
       return x
 
 -- |
@@ -64,9 +64,9 @@ parseExpr =
 -- expecting "\""
 parseString :: Parser LispVal
 parseString = do
-  char '"'
+  _ <- char '"'
   x <- many (noneOf "\"")
-  char '"'
+  _ <- char '"'
   return $ String x
 
 -- |
@@ -114,9 +114,9 @@ parseList = List <$> sepBy parseExpr spaces
 
 parseDottedList :: Parser LispVal
 parseDottedList = do
-  head <- endBy parseExpr spaces
-  tail <- char '.' >> spaces >> parseExpr
-  return $ DottedList head tail
+  head0 <- endBy parseExpr spaces
+  tail0 <- char '.' >> spaces >> parseExpr
+  return $ DottedList head0 tail0
 
 -- |
 -- >>> parse parseQuoted "default" "'456"
@@ -127,6 +127,6 @@ parseDottedList = do
 -- expecting "'"
 parseQuoted :: Parser LispVal
 parseQuoted = do
-  char '\''
+  _ <- char '\''
   x <- parseExpr
   return $ List [Atom "quote", x]
