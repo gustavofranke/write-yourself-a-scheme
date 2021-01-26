@@ -1,10 +1,9 @@
 module Main where
 
-import System.Environment
-import WriteYourselfAScheme
-import Control.Monad (liftM)
+import Repl ( runRepl, runOne )
+import System.Environment ( getArgs )
 
 main :: IO ()
 main = do
-    args   <- getArgs
-    if null args then runRepl else runOne $ args
+  args <- getArgs
+  if null args then runRepl else runOne args
