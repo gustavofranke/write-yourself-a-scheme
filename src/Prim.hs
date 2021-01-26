@@ -1,15 +1,18 @@
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Prim where
 
-import Control.Monad.Except ( MonadError(catchError, throwError) )
-import Data.Functor ( (<&>) )
+import Control.Monad.Except (MonadError (catchError, throwError))
+import Data.Functor ((<&>))
+import qualified Data.Text as T
 import LispVal
-    ( ThrowsError,
-      LispError(TypeMismatch, NumArgs),
-      LispVal(Bool, Atom, DottedList, List, String, Number) )
+  ( LispError (NumArgs, TypeMismatch),
+    LispVal (Atom, Bool, DottedList, List, Number, String),
+    ThrowsError,
+  )
 
-primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
+primitives :: [(T.Text, [LispVal] -> ThrowsError LispVal)]
 primitives =
   [ ("+", numericBinop (+)),
     ("-", numericBinop (-)),
@@ -58,9 +61,9 @@ numBoolBinop :: (Integer -> Integer -> Bool) -> [LispVal] -> ThrowsError LispVal
 numBoolBinop = boolBinop unpackNum
 
 -- |
--- >>> strBoolBinop (==) [String "Hello", String "Hello"]
+-- >>> strBoolBinop (==) [String $ T.pack "Hello", String $ T.pack "Hello"]
 -- Right #t
-strBoolBinop :: (String -> String -> Bool) -> [LispVal] -> ThrowsError LispVal
+strBoolBinop :: (T.Text -> T.Text -> Bool) -> [LispVal] -> ThrowsError LispVal
 strBoolBinop = boolBinop unpackStr
 
 -- |
@@ -70,9 +73,9 @@ boolBoolBinop :: (Bool -> Bool -> Bool) -> [LispVal] -> ThrowsError LispVal
 boolBoolBinop = boolBinop unpackBool
 
 -- |
--- >>> car [(List [String "Hello", String "world"])]
+-- >>> car [(List [String $ T.pack "Hello", String $ T.pack "world"])]
 -- Right "Hello'
--- >>> car [(DottedList [String "Hello", String "world"] (Bool True))]
+-- >>> car [(DottedList [String $ T.pack "Hello", String $ T.pack "world"] (Bool True))]
 -- Right "Hello'
 car :: [LispVal] -> ThrowsError LispVal
 car [List (x : _)] = return x
@@ -81,9 +84,9 @@ car [badArg] = throwError $ TypeMismatch "pair" badArg
 car badArgList = throwError $ NumArgs 1 badArgList
 
 -- |
--- >>> cdr [(List [String "Hello", String "world"])]
+-- >>> cdr [(List [String $ T.pack "Hello", String $ T.pack "world"])]
 -- Right ("world')
--- >>> cdr [(DottedList [String "Hello", String "world"] (Bool True))]
+-- >>> cdr [(DottedList [String $ T.pack "Hello", String $ T.pack "world"] (Bool True))]
 -- Right ("world'.#t)
 cdr :: [LispVal] -> ThrowsError LispVal
 cdr [List (_ : xs)] = return $ List xs
@@ -93,9 +96,9 @@ cdr [badArg] = throwError $ TypeMismatch " pair" badArg
 cdr badArgList = throwError $ NumArgs 1 badArgList
 
 -- |
--- >>> cons [(List [String "Hello", String "world"]), List []]
+-- >>> cons [(List [String $ T.pack "Hello", String $ T.pack "world"]), List []]
 -- Right (("Hello' "world'))
--- >>> cons [(String "ASdf"), (List [String "Hello", String "world"])]
+-- >>> cons [(String $ T.pack "ASdf"), (List [String $ T.pack "Hello", String $ T.pack "world"])]
 -- Right ("ASdf' "Hello' "world')
 cons :: [LispVal] -> ThrowsError LispVal
 cons [x1, List []] = return $ List [x1]
@@ -105,9 +108,9 @@ cons [x1, x2] = return $ DottedList [x1] x2
 cons badArgList = throwError $ NumArgs 2 badArgList
 
 -- |
--- >>> eqv [(String "Hello"), (String "Hello")]
+-- >>> eqv [(String $ T.pack "Hello"), (String $ T.pack "Hello")]
 -- Right #t
--- >>> eqv [(List [String "Hello", String "world"]), (List [String "Hello", String "world"])]
+-- >>> eqv [(List [String $ T.pack "Hello", String $ T.pack "world"]), (List [String $ T.pack "Hello", String $ T.pack "world"])]
 -- Right #t
 eqv :: [LispVal] -> ThrowsError LispVal
 eqv [(Bool arg1), (Bool arg2)] = return $ Bool $ arg1 == arg2
@@ -141,12 +144,12 @@ equal badArgList = throwError $ NumArgs 2 badArgList
 -- |
 -- >>> unpackNum (Number 7)
 -- Right 7
--- >>> unpackNum (String "7")
+-- >>> unpackNum (String $ T.pack "7")
 -- Right 7
 unpackNum :: LispVal -> ThrowsError Integer
 unpackNum (Number n) = return n
 unpackNum (String n) =
-  let parsed = reads n
+  let parsed = reads (T.unpack n)
    in if null parsed
         then throwError $ TypeMismatch "number" $ String n
         else return $ fst $ head parsed
@@ -156,12 +159,12 @@ unpackNum notNum = throwError $ TypeMismatch "number" notNum
 -- |
 -- >>> unpackStr (Number 7)
 -- Right "7"
--- >>> unpackStr (String "7")
+-- >>> unpackStr (String $ T.pack "7")
 -- Right "7"
-unpackStr :: LispVal -> ThrowsError String
+unpackStr :: LispVal -> ThrowsError T.Text
 unpackStr (String s) = return s
-unpackStr (Number s) = return $ show s
-unpackStr (Bool s) = return $ show s
+unpackStr (Number s) = return $ (T.pack . show) s
+unpackStr (Bool s) = return $ (T.pack . show) s
 unpackStr notString = throwError $ TypeMismatch "string" notString
 
 -- |

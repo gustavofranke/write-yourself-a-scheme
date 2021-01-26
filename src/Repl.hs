@@ -1,27 +1,35 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Repl where
 
 import Control.Monad.Except
-    ( runExceptT, MonadIO(liftIO), MonadError(catchError) )
-import Data.Functor ( (<&>) )
-import Data.IORef ( newIORef )
-import Eval ( apply, bindVars, eval, liftThrows, load, readExpr )
+  ( MonadError (catchError),
+    MonadIO (liftIO),
+    runExceptT,
+  )
+import Data.Functor ((<&>))
+import Data.IORef (newIORef)
+import qualified Data.Text as T
+import Eval (apply, bindVars, eval, liftThrows, load, readExpr)
 import LispVal
-    ( ThrowsError,
-      LispVal(String, IOFunc, PrimitiveFunc, Port, Bool, List, Atom),
-      Env,
-      IOThrowsError )
-import Prim ( primitives )
+  ( Env,
+    IOThrowsError,
+    LispVal (Atom, Bool, IOFunc, List, Port, PrimitiveFunc, String),
+    ThrowsError,
+  )
+import Prim (primitives)
 import System.IO
-    ( hClose,
-      hFlush,
-      openFile,
-      stderr,
-      stdin,
-      stdout,
-      hGetLine,
-      hPutStrLn,
-      hPrint,
-      IOMode(WriteMode, ReadMode) )
+  ( IOMode (ReadMode, WriteMode),
+    hClose,
+    hFlush,
+    hGetLine,
+    hPrint,
+    hPutStrLn,
+    openFile,
+    stderr,
+    stdin,
+    stdout,
+  )
 
 runRepl :: IO ()
 runRepl = primitiveBindings >>= until_ (== "quit") (readPrompt "Lisp>>> ") . evalAndPrint
@@ -41,13 +49,13 @@ primitiveBindings = nullEnv >>= flip bindVars (map (makeFunc IOFunc) ioPrimitive
   where
     makeFunc constructor (var, func) = (var, constructor func)
 
-flushStr :: String -> IO ()
-flushStr str = putStr str >> hFlush stdout
+flushStr :: T.Text -> IO ()
+flushStr str = putStr (T.unpack str) >> hFlush stdout
 
-readPrompt :: String -> IO String
-readPrompt prompt = flushStr prompt >> getLine
+readPrompt :: T.Text -> IO T.Text
+readPrompt prompt = flushStr prompt >> fmap T.pack getLine
 
-ioPrimitives :: [(String, [LispVal] -> IOThrowsError LispVal)]
+ioPrimitives :: [(T.Text, [LispVal] -> IOThrowsError LispVal)]
 ioPrimitives =
   [ ("apply", applyProc),
     ("open-input-file", makePort ReadMode),
@@ -65,7 +73,7 @@ applyProc [func, List args] = apply func args
 applyProc (func : args) = apply func args
 
 makePort :: IOMode -> [LispVal] -> IOThrowsError LispVal
-makePort mode [String filename] = fmap Port $ liftIO $ openFile filename mode
+makePort mode [String filename] = fmap Port $ liftIO $ openFile (T.unpack filename) mode
 
 closePort :: [LispVal] -> IOThrowsError LispVal
 closePort [Port port] = liftIO $ hClose port >> return (Bool True)
@@ -73,39 +81,39 @@ closePort _ = return $ Bool False
 
 readProc :: [LispVal] -> IOThrowsError LispVal
 readProc [] = readProc [Port stdin]
-readProc [Port port] = liftIO (hGetLine port) >>= liftThrows . readExpr
+readProc [Port port] = liftIO (hGetLine port) >>= liftThrows . readExpr . T.pack
 
 writeProc :: [LispVal] -> IOThrowsError LispVal
 writeProc [obj] = writeProc [obj, Port stdout]
 writeProc [obj, Port port] = liftIO $ hPrint port obj >> return (Bool True)
 
 readContents :: [LispVal] -> IOThrowsError LispVal
-readContents [String filename] = fmap String $ liftIO $ readFile filename
+readContents [String filename] = fmap (String . T.pack) $ liftIO $ readFile (T.unpack filename)
 
 readAll :: [LispVal] -> IOThrowsError LispVal
 readAll [String filename] = List <$> load filename
 
-evalAndPrint :: Env -> String -> IO ()
-evalAndPrint env expr = evalString env expr >>= putStrLn
+evalAndPrint :: Env -> T.Text -> IO ()
+evalAndPrint env expr = evalString env expr >>= putStrLn . T.unpack
 
 -- |
--- >>> primitiveBindings >>= (\e -> evalString e "(+ 2 3)")
+-- >>> primitiveBindings >>= (\e -> evalString e $ T.pack "(+ 2 3)")
 -- "5"
--- >>> primitiveBindings >>= (\e -> evalString e "(define (factorial x) (if (= x 1) 1 (* x (factorial (- x 1)))))")
+-- >>> primitiveBindings >>= (\e -> evalString e $ T.pack "(define (factorial x) (if (= x 1) 1 (* x (factorial (- x 1)))))")
 -- "(lambda (\"x\") ...)"
-evalString :: Env -> String -> IO String
-evalString env expr = runIOThrows $ fmap show $ liftThrows (readExpr expr) >>= eval env
+evalString :: Env -> T.Text -> IO T.Text
+evalString env expr = runIOThrows $ fmap (T.pack . show) $ liftThrows (readExpr expr) >>= eval env
 
-runOne :: [String] -> IO ()
+runOne :: [T.Text] -> IO ()
 runOne args = do
   env <- primitiveBindings >>= flip bindVars [("args", List $ map String $ drop 1 args)]
-  runIOThrows (show <$> eval env (List [Atom "load", String (head args)])) >>= hPutStrLn stderr
+  runIOThrows (T.pack . show <$> eval env (List [Atom "load", String (head args)])) >>= hPutStrLn stderr . T.unpack
 
-runIOThrows :: IOThrowsError String -> IO String
+runIOThrows :: IOThrowsError T.Text -> IO T.Text
 runIOThrows action = runExceptT (trapError action) <&> extractValue
 
-trapError :: (MonadError a m, Show a) => m String -> m String
-trapError action = catchError action (return . show)
+trapError :: (MonadError a m, Show a) => m T.Text -> m T.Text
+trapError action = catchError action (return . T.pack . show)
 
 extractValue :: ThrowsError a -> a
 extractValue (Right val) = val

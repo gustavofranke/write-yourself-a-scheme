@@ -1,82 +1,91 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module LispVal where
 
 import Control.Monad.Except (ExceptT)
 import Data.IORef (IORef)
+import qualified Data.Text as T
 import System.IO (Handle)
 import Text.Parsec (ParseError)
 
 type IOThrowsError = ExceptT LispError IO
 
-type Env = IORef [(String, IORef LispVal)]
+type Env = IORef [(T.Text, IORef LispVal)]
 
 data LispVal
-  = Atom String
+  = Atom T.Text
   | List [LispVal]
   | DottedList [LispVal] LispVal
   | Number Integer
-  | String String
+  | String T.Text
   | Bool Bool
   | PrimitiveFunc ([LispVal] -> ThrowsError LispVal)
-  | Func {params :: [String], vararg :: Maybe String, body :: [LispVal], closure :: Env}
+  | Func {params :: [T.Text], vararg :: Maybe T.Text, body :: [LispVal], closure :: Env}
   | IOFunc ([LispVal] -> IOThrowsError LispVal)
   | Port Handle
 
-instance Show LispVal where show = showVal
+instance Show LispVal where
+  show = T.unpack . showVal
 
 -- |
--- >>> showVal (String "Hello")
+-- >>> showVal (String $ T.pack "Hello")
 -- "\"Hello'"
 -- >>> showVal (Bool True)
 -- "#t"
-showVal :: LispVal -> String
-showVal (String contents) = "\"" ++ contents ++ "\'"
+showVal :: LispVal -> T.Text
+showVal (String contents) = T.concat ["\"", contents, "\'"]
 showVal (Atom name) = name
-showVal (Number contents) = show contents
+showVal (Number contents) = (T.pack . show) contents
 showVal (Bool True) = "#t"
 showVal (Bool False) = "#f"
-showVal (List contents) = "(" ++ unwordsList contents ++ ")"
-showVal (DottedList head0 tail0) = "(" ++ unwordsList head0 ++ "." ++ showVal tail0 ++ ")"
+showVal (List contents) = T.concat ["(", unwordsList contents, ")"]
+showVal (DottedList head0 tail0) = T.concat ["(", unwordsList head0, ".", showVal tail0, ")"]
 showVal (PrimitiveFunc _) = "<primitive>"
 showVal Func {params = args, vararg = varargs, body = _, closure = _} =
-  "(lambda (" ++ unwords (map show args)
-    ++ ( case varargs of
-           Nothing -> ""
-           Just arg -> " . " ++ arg
-       )
-    ++ ") ...)"
+  T.concat
+    [ "(lambda (",
+      T.unwords (map (T.pack . show) args),
+      case varargs of
+        Nothing -> ""
+        Just arg -> T.concat [" . ", arg],
+      ") ...)"
+    ]
 showVal (Port _) = "<IO port>"
 showVal (IOFunc _) = "<IO primitive>"
 
 -- |
 -- >>> unwordsList [Bool True, Bool False]
 -- "#t #f"
--- >>> unwordsList [String "Hello", String "world"]
+-- >>> unwordsList [String $ T.pack "Hello", String $ T.pack "world"]
 -- "\"Hello' \"world'"
-unwordsList :: [LispVal] -> String
-unwordsList = unwords . map showVal
+unwordsList :: [LispVal] -> T.Text
+unwordsList = T.unwords . map showVal
 
 data LispError
   = NumArgs Integer [LispVal]
-  | TypeMismatch String LispVal
+  | TypeMismatch T.Text LispVal
   | Parser ParseError
-  | BadSpecialForm String LispVal
-  | NotFunction String String
-  | UnboundVar String String
-  | Default String
+  | BadSpecialForm T.Text LispVal
+  | NotFunction T.Text T.Text
+  | UnboundVar T.Text T.Text
+  | Default T.Text
 
-showError :: LispError -> String
-showError (UnboundVar message varname) = message ++ ": " ++ varname
-showError (BadSpecialForm message form) = message ++ ": " ++ show form
-showError (NotFunction message func) = message ++ ": " ++ show func
+showError :: LispError -> T.Text
+showError (UnboundVar message varname) = T.concat [message, ": ", varname]
+showError (BadSpecialForm message form) = T.concat [message, ": ", (T.pack . show) form]
+showError (NotFunction message func) = T.concat [message, ": ", (T.pack . show) func]
 showError (NumArgs expected found) =
-  "Expected " ++ show expected
-    ++ " args: found values "
-    ++ unwordsList found
-showError (TypeMismatch expected found) = "Invalid type: expected " ++ expected ++ ", found " ++ show found
-showError (Parser parseErr) = "Parse error at " ++ show parseErr
-showError (Default err) = "Default error at " ++ show err
+  T.concat
+    [ "Expected ",
+      (T.pack . show) expected,
+      " args: found values ",
+      unwordsList found
+    ]
+showError (TypeMismatch expected found) = T.concat ["Invalid type: expected ", expected, ", found ", (T.pack . show) found]
+showError (Parser parseErr) = T.concat ["Parse error at ", (T.pack . show) parseErr]
+showError (Default err) = T.concat ["Default error at ", (T.pack . show) err]
 
-instance Show LispError where show = showError
+instance Show LispError where show = T.unpack . showError
 
 -- instance Except LispError where
 --   noMsg = Default "An error has occurred"

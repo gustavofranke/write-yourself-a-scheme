@@ -1,8 +1,10 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Exercises where
 
 import Data.Functor
+import qualified Data.Text as T
 import LispVal
-
 import Text.ParserCombinators.Parsec
 
 -----------------------------------------------------------------------------
@@ -41,7 +43,7 @@ parseString1 = do
   _ <- char '"'
   x <- many (noneOf "\"" <|> oneOf "\n\r\t\\")
   _ <- char '"'
-  return $ String x
+  return $ String (T.pack x)
 
 -- 4. Change parseNumber to support the Scheme standard for different bases.
 -- You may find the readOct and readHex functions useful.

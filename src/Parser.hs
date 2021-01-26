@@ -1,5 +1,8 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Parser where
 
+import qualified Data.Text as T
 import LispVal
 import Text.ParserCombinators.Parsec hiding (spaces)
 
@@ -67,7 +70,7 @@ parseString = do
   _ <- char '"'
   x <- many (noneOf "\"")
   _ <- char '"'
-  return $ String x
+  return $ String $ T.pack x
 
 -- |
 -- >>> parse parseAtom "default" "hello"
@@ -90,7 +93,7 @@ parseAtom = do
   return $ case atom of
     "#t" -> Bool True
     "#f" -> Bool False
-    _ -> Atom atom
+    _ -> Atom $ T.pack atom
 
 -- |
 -- >>> parse parseNumber "default" "123"

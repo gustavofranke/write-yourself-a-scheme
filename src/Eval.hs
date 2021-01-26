@@ -1,14 +1,17 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Eval where
 
 import Control.Monad.Except
   ( ExceptT,
     MonadError (throwError),
     MonadIO (liftIO),
-    runExceptT
+    runExceptT,
   )
 import Data.Functor ((<&>))
 import Data.IORef (newIORef, readIORef, writeIORef)
 import Data.Maybe (isJust, isNothing)
+import qualified Data.Text as T
 import LispVal
   ( Env,
     IOThrowsError,
@@ -33,9 +36,9 @@ import Text.ParserCombinators.Parsec (Parser, endBy, parse)
 -- |
 -- >>> newIORef [] >>= (\e -> runExceptT $ eval e (Bool True))
 -- Right #t
--- >>> newIORef [] >>= (\e -> runExceptT $ eval e (String "Hello"))
+-- >>> newIORef [] >>= (\e -> runExceptT $ eval e (String $ T.pack "Hello"))
 -- Right "Hello'
--- >>> newIORef [] >>= (\e -> runExceptT $ eval e (List [Atom "if", (Bool True), (String "Hello"), (String "No no")]))
+-- >>> newIORef [] >>= (\e -> runExceptT $ eval e (List [Atom $ T.pack "if", (Bool True), (String $ T.pack "Hello"), (String $ T.pack "No no")]))
 -- Right "Hello'
 eval :: Env -> LispVal -> IOThrowsError LispVal
 eval _ val@(String _) = return val
@@ -62,7 +65,7 @@ eval env (List (function : args)) = do
   apply func argVals
 eval _ badForm = throwError $ BadSpecialForm "Unrecognized special form" badForm
 
-makeFunc :: Monad m => Maybe String -> Env -> [LispVal] -> [LispVal] -> m LispVal
+makeFunc :: Monad m => Maybe T.Text -> Env -> [LispVal] -> [LispVal] -> m LispVal
 makeFunc varargs env params body = return $ Func (map showVal params) varargs body env
 
 makeNormalFunc :: Env -> [LispVal] -> [LispVal] -> ExceptT LispError IO LispVal
@@ -71,50 +74,50 @@ makeNormalFunc = makeFunc Nothing
 makeVarargs :: LispVal -> Env -> [LispVal] -> [LispVal] -> ExceptT LispError IO LispVal
 makeVarargs = makeFunc . Just . showVal
 
-load :: String -> IOThrowsError [LispVal]
-load filename = liftIO (readFile filename) >>= liftThrows . readExprList
+load :: T.Text -> IOThrowsError [LispVal]
+load filename = liftIO (readFile (T.unpack filename)) >>= liftThrows . readExprList . T.pack
 
 liftThrows :: ThrowsError a -> IOThrowsError a
 liftThrows (Left err) = throwError err
 liftThrows (Right val) = return val
 
-isBound :: Env -> String -> IO Bool
+isBound :: Env -> T.Text -> IO Bool
 isBound envRef var = readIORef envRef <&> isJust . lookup var
 
 -- |
--- >>> readExpr "     $"
+-- >>> readExpr $ T.pack "     $"
 -- Left Parse error at "lisp" (line 1, column 1):
 -- unexpected " "
 -- expecting letter, "\"", digit, "'" or "("
--- >>> readExpr "     !"
+-- >>> readExpr $ T.pack "     !"
 -- Left Parse error at "lisp" (line 1, column 1):
 -- unexpected " "
 -- expecting letter, "\"", digit, "'" or "("
--- >>> readExpr "     %"
+-- >>> readExpr $ T.pack "     %"
 -- Left Parse error at "lisp" (line 1, column 1):
 -- unexpected " "
 -- expecting letter, "\"", digit, "'" or "("
--- >>> readExpr "(a test)"
+-- >>> readExpr $ T.pack "(a test)"
 -- Right (a test)
--- >>> readExpr "(a (nested) test)"
+-- >>> readExpr $ T.pack "(a (nested) test)"
 -- Right (a (nested) test)
--- >>> readExpr "(a (dotted . list) test)"
+-- >>> readExpr $ T.pack "(a (dotted . list) test)"
 -- Right (a (dotted.list) test)
--- >>> readExpr "(a '(quoted (dotted . list)) test)"
+-- >>> readExpr $ T.pack "(a '(quoted (dotted . list)) test)"
 -- Right (a (quote (quoted (dotted.list))) test)
--- >>> readExpr "(a '(imbalanced parens)"
+-- >>> readExpr $ T.pack "(a '(imbalanced parens)"
 -- Left Parse error at "lisp" (line 1, column 24):
 -- unexpected end of input
 -- expecting space or ")"
-readExpr :: String -> ThrowsError LispVal
+readExpr :: T.Text -> ThrowsError LispVal
 readExpr = readOrThrow parseExpr
 
-readOrThrow :: Parser a -> String -> ThrowsError a
-readOrThrow parser input = case parse parser "lisp" input of
+readOrThrow :: Parser a -> T.Text -> ThrowsError a
+readOrThrow parser input = case parse parser "lisp" (T.unpack input) of
   Left err -> throwError $ Parser err
   Right val -> return val
 
-readExprList :: String -> ThrowsError [LispVal]
+readExprList :: T.Text -> ThrowsError [LispVal]
 readExprList = readOrThrow (endBy parseExpr spaces)
 
 -- |
@@ -136,7 +139,7 @@ apply (Func params varargs body closure) args =
       Just argName -> liftIO $ bindVars env [(argName, List remainingArgs)]
       Nothing -> return env
 
-bindVars :: Env -> [(String, LispVal)] -> IO Env
+bindVars :: Env -> [(T.Text, LispVal)] -> IO Env
 bindVars envRef bindings = readIORef envRef >>= extendEnv bindings >>= newIORef
   where
     extendEnv binds env = fmap (++ env) (mapM addBinding binds)
@@ -144,7 +147,7 @@ bindVars envRef bindings = readIORef envRef >>= extendEnv bindings >>= newIORef
       ref <- newIORef value
       return (var, ref)
 
-getVar :: Env -> String -> IOThrowsError LispVal
+getVar :: Env -> T.Text -> IOThrowsError LispVal
 getVar envRef var = do
   env <- liftIO $ readIORef envRef
   maybe
@@ -152,7 +155,7 @@ getVar envRef var = do
     (liftIO . readIORef)
     (lookup var env)
 
-setVar :: Env -> String -> LispVal -> IOThrowsError LispVal
+setVar :: Env -> T.Text -> LispVal -> IOThrowsError LispVal
 setVar envRef var value = do
   env <- liftIO $ readIORef envRef
   maybe
@@ -161,7 +164,7 @@ setVar envRef var value = do
     (lookup var env)
   return value
 
-defineVar :: Env -> String -> LispVal -> IOThrowsError LispVal
+defineVar :: Env -> T.Text -> LispVal -> IOThrowsError LispVal
 defineVar envRef var value = do
   alreadyDefined <- liftIO $ isBound envRef var
   if alreadyDefined
