@@ -3,7 +3,7 @@
 module Repl where
 
 import Control.Monad.Except
-  ( MonadError (catchError),
+  ( MonadError(throwError, catchError),
     MonadIO (liftIO),
     runExceptT,
   )
@@ -12,7 +12,7 @@ import Data.IORef (newIORef)
 import qualified Data.Text as T
 import Eval (apply, bindVars, eval, liftThrows, load, readExpr)
 import LispVal
-  ( Env,
+  (LispError(Default),  Env,
     IOThrowsError,
     LispVal (Atom, Bool, IOFunc, List, Port, PrimitiveFunc, String),
     ThrowsError,
@@ -71,9 +71,11 @@ ioPrimitives =
 applyProc :: [LispVal] -> IOThrowsError LispVal
 applyProc [func, List args] = apply func args
 applyProc (func : args) = apply func args
+applyProc lispVal = throwError $ Default (T.pack ("invalid call to applyProc with: " ++ show lispVal))
 
 makePort :: IOMode -> [LispVal] -> IOThrowsError LispVal
 makePort mode [String filename] = fmap Port $ liftIO $ openFile (T.unpack filename) mode
+makePort _ lispVal = throwError $ Default (T.pack ("invalid call to makePort with: " ++ show lispVal))
 
 closePort :: [LispVal] -> IOThrowsError LispVal
 closePort [Port port] = liftIO $ hClose port >> return (Bool True)
@@ -82,16 +84,20 @@ closePort _ = return $ Bool False
 readProc :: [LispVal] -> IOThrowsError LispVal
 readProc [] = readProc [Port stdin]
 readProc [Port port] = liftIO (hGetLine port) >>= liftThrows . readExpr . T.pack
+readProc lispVal = throwError $ Default (T.pack ("invalid call to readProc with: " ++ show lispVal))
 
 writeProc :: [LispVal] -> IOThrowsError LispVal
 writeProc [obj] = writeProc [obj, Port stdout]
 writeProc [obj, Port port] = liftIO $ hPrint port obj >> return (Bool True)
+writeProc lispVal = throwError $ Default (T.pack ("invalid call to writeProc with: " ++ show lispVal))
 
 readContents :: [LispVal] -> IOThrowsError LispVal
 readContents [String filename] = fmap (String . T.pack) $ liftIO $ readFile (T.unpack filename)
+readContents lispVal = throwError $ Default (T.pack ("invalid call to readContents with: " ++ show lispVal))
 
 readAll :: [LispVal] -> IOThrowsError LispVal
 readAll [String filename] = List <$> load filename
+readAll lispVal = throwError $ Default (T.pack ("invalid call to readAll with: " ++ show lispVal))
 
 evalAndPrint :: Env -> T.Text -> IO ()
 evalAndPrint env expr = evalString env expr >>= putStrLn . T.unpack

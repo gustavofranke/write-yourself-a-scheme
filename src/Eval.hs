@@ -15,7 +15,7 @@ import qualified Data.Text as T
 import LispVal
   ( Env,
     IOThrowsError,
-    LispError (BadSpecialForm, NumArgs, Parser, UnboundVar),
+    LispError (BadSpecialForm, NumArgs, Parser, UnboundVar, Default),
     LispVal
       ( Atom,
         Bool,
@@ -138,6 +138,7 @@ apply (Func params varargs body closure) args =
     bindVarArgs arg env = case arg of
       Just argName -> liftIO $ bindVars env [(argName, List remainingArgs)]
       Nothing -> return env
+apply val vals = throwError $ Default (T.pack ("invalid call with: " ++ show val ++ " and: " ++ show vals))
 
 bindVars :: Env -> [(T.Text, LispVal)] -> IO Env
 bindVars envRef bindings = readIORef envRef >>= extendEnv bindings >>= newIORef
