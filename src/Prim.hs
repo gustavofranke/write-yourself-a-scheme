@@ -178,6 +178,11 @@ unpackBool notBool = throwError $ TypeMismatch "boolean" notBool
 
 data Unpacker = forall a. Eq a => AnyUnpacker (LispVal -> ThrowsError a)
 
+-- |
+-- >>> unpackEquals (Number 7) (Number 7) (AnyUnpacker unpackNum)
+-- Right True
+-- >>> unpackEquals (Bool True) (Bool False) (AnyUnpacker unpackBool)
+-- Right False
 unpackEquals :: LispVal -> LispVal -> Unpacker -> ThrowsError Bool
 unpackEquals arg1 arg2 (AnyUnpacker unpacker) = do
   unpacked1 <- unpacker arg1

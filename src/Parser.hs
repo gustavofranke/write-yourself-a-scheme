@@ -46,6 +46,10 @@ symbol = oneOf "!$%&|*+-/:<=?>@^_~#"
 -- Right "a string'
 -- >>> parse parseExpr "default" "(+ 2 2)"
 -- Right (+ 2 2)
+-- >>> parse parseExpr "default" "(1 2 3)"
+-- Right (1 2 3)
+-- >>> parse parseExpr "default" "'(1 2 3)"
+-- Right (quote (1 2 3))
 parseExpr :: Parser LispVal
 parseExpr =
   parseAtom
@@ -112,6 +116,8 @@ parseNumber = Number . read <$> many1 digit
 -- Right (456)
 -- >>> parse parseList "default" "asdf"
 -- Right (asdf)
+-- >>> parse parseList "default" "(1 2 3)"
+-- Right ((1 2 3))
 parseList :: Parser LispVal
 parseList = List <$> sepBy parseExpr spaces
 

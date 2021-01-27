@@ -32,6 +32,10 @@ instance Show LispVal where
 -- "\"Hello'"
 -- >>> showVal (Bool True)
 -- "#t"
+-- >>> showVal (DottedList [Number 1, Number 2] (Number 3))
+-- "(1 2.3)"
+-- >>> showVal (List [Number 1, Number 2, Number 3])
+-- "(1 2 3)"
 showVal :: LispVal -> T.Text
 showVal (String contents) = T.concat ["\"", contents, "\'"]
 showVal (Atom name) = name
