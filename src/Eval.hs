@@ -81,6 +81,11 @@ liftThrows :: ThrowsError a -> IOThrowsError a
 liftThrows (Left err) = throwError err
 liftThrows (Right val) = return val
 
+-- |
+-- >>> newIORef [] >>= (\e -> isBound e (T.pack "hello"))
+-- False
+-- >>> newIORef (Number 5) >>= \ ref -> newIORef [(T.pack "hello", ref)] >>= (\ e -> isBound e (T.pack "hello"))
+-- True
 isBound :: Env -> T.Text -> IO Bool
 isBound envRef var = readIORef envRef <&> isJust . lookup var
 
@@ -165,6 +170,9 @@ setVar envRef var value = do
     (lookup var env)
   return value
 
+-- |
+-- >>> newIORef [] >>= (\e -> runExceptT $ defineVar e (T.pack "(1") (Atom (T.pack "hello")))
+-- Right hello
 defineVar :: Env -> T.Text -> LispVal -> IOThrowsError LispVal
 defineVar envRef var value = do
   alreadyDefined <- liftIO $ isBound envRef var
