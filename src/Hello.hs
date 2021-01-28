@@ -2,10 +2,11 @@ module Hello where
 
 import System.Environment
 
+-- | This corresponds to Ch 01
 main0 :: IO ()
 main0 = do
   args <- getArgs
-  putStrLn ("Hello, " ++ args !! 0)
+  putStrLn ("Hello, " ++ head args)
 
 -- To compile and run the program, try something like this:
 -- >> ghc -o hello_you hello.hs
