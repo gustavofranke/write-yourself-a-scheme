@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0f1242bacc77e2f6d28883172726200506555fc7c7f5dbca3c1eb4e5a8252792
+-- hash: f11e9474cc526cfe51f4e7258ef158ce2edbb8450a63ef6c8183f924c38d6298
 
 name:           write-yourself-a-scheme
 version:        0.1.0.0
@@ -30,7 +30,6 @@ library
       Eval
       Exercises
       Hello
-      Lib
       LispVal
       Parser
       Prim
