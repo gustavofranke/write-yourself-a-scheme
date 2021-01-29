@@ -153,6 +153,11 @@ bindVars envRef bindings = readIORef envRef >>= extendEnv bindings >>= newIORef
       ref <- newIORef value
       return (var, ref)
 
+-- |
+-- >>> newIORef [] >>= (\e -> bindVars e [(T.pack "four", Number 4), (T.pack "five", Number 5)]) >>= (\e -> runExceptT $ getVar e (T.pack "five"))
+-- Right 5
+-- >>> newIORef [] >>= (\e -> runExceptT $ getVar e (T.pack "five"))
+-- Left Getting an unbound variable: five
 getVar :: Env -> T.Text -> IOThrowsError LispVal
 getVar envRef var = do
   env <- liftIO $ readIORef envRef
@@ -161,6 +166,9 @@ getVar envRef var = do
     (liftIO . readIORef)
     (lookup var env)
 
+-- |
+-- >>> newIORef [] >>= (\e -> bindVars e [(T.pack "four", Number 4), (T.pack "five", Number 5)]) >>= (\e -> runExceptT $ setVar e (T.pack "five") (Number 123))
+-- Right 123
 setVar :: Env -> T.Text -> LispVal -> IOThrowsError LispVal
 setVar envRef var value = do
   env <- liftIO $ readIORef envRef
@@ -173,6 +181,8 @@ setVar envRef var value = do
 -- |
 -- >>> newIORef [] >>= (\e -> runExceptT $ defineVar e (T.pack "(1") (Atom (T.pack "hello")))
 -- Right hello
+-- >>> newIORef (Number 5) >>= \ ref -> newIORef [(T.pack "hello", ref)] >>= (\e -> runExceptT $ defineVar e (T.pack "(hello") (String (T.pack "string")))
+-- Right "string'
 defineVar :: Env -> T.Text -> LispVal -> IOThrowsError LispVal
 defineVar envRef var value = do
   alreadyDefined <- liftIO $ isBound envRef var
