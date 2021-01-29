@@ -6,7 +6,6 @@ import Control.Monad.Except
   ( ExceptT,
     MonadError (throwError),
     MonadIO (liftIO),
-    runExceptT,
   )
 import Data.Functor ((<&>))
 import Data.IORef (newIORef, readIORef, writeIORef)
@@ -15,7 +14,7 @@ import qualified Data.Text as T
 import LispVal
   ( Env,
     IOThrowsError,
-    LispError (BadSpecialForm, NumArgs, Parser, UnboundVar, Default),
+    LispError (BadSpecialForm, Default, NumArgs, Parser, UnboundVar),
     LispVal
       ( Atom,
         Bool,
@@ -30,8 +29,11 @@ import LispVal
     showVal,
   )
 import Parser (parseExpr, spaces)
-import Prim
 import Text.ParserCombinators.Parsec (Parser, endBy, parse)
+
+-- $setup
+-- >>> import Control.Monad.Except
+-- >>> import Prim
 
 -- |
 -- >>> newIORef [] >>= (\e -> runExceptT $ eval e (Bool True))
