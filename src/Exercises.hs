@@ -25,7 +25,16 @@ parseNumber1 = many1 digit <&> Number . read
 -- Change parseString so that \" gives a literal quote character instead of terminating the string.
 -- You may want to replace noneOf "\"" with a new parser action that accepts
 -- either a non-quote character or a backslash followed by a quote mark.
-
+-- |
+-- >>> parse parseString0 "default" "\"hello\""
+-- Right "hello'
+-- >>> parse parseString0 "default" "\"hello \"how\" are you\""
+-- Right "hello '
+parseString0 :: Parser LispVal
+parseString0 = do _ <- char '"'
+                  x <- many (noneOf "\"" <|> do char '\\' >> char '"')
+                  _ <- char '"'
+                  return $ String (T.pack x)
 -- 3. Modify the previous exercise to support \n, \r, \t, \\, and any other desired escape characters.
 
 -- |
