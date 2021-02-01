@@ -63,3 +63,11 @@
 (define test41 (reverse '(1 2 3)))
 (define test42 (filter even? '(1 2 3 4)))
 (define test43 (map even? '(1 2 3 4)))
+
+(define test44 ((curry + 2) 5))
+(define test45 (zero? 0))
+(define test46 (positive? 6))
+(define test47 (- 0 12))
+(define test48 (positive? (- 0 12)))
+(define test49 (map (curry + 2) '(1 2 3 4)))
+(define test50 (negative? (- 0 12)))

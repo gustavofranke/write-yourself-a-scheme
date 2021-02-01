@@ -20,6 +20,7 @@ import LispVal
         Bool,
         DottedList,
         Func,
+        IOFunc,
         List,
         Number,
         PrimitiveFunc,
@@ -134,6 +135,7 @@ readExprList = readOrThrow (endBy parseExpr spaces)
 -- Right #f
 apply :: LispVal -> [LispVal] -> IOThrowsError LispVal
 apply (PrimitiveFunc func) args = liftThrows $ func args
+apply (IOFunc func) args = func args
 apply (Func params varargs body closure) args =
   if num params /= num args && isNothing varargs
     then throwError $ NumArgs (num params) args
@@ -145,7 +147,7 @@ apply (Func params varargs body closure) args =
     bindVarArgs arg env = case arg of
       Just argName -> liftIO $ bindVars env [(argName, List remainingArgs)]
       Nothing -> return env
-apply val vals = throwError $ Default (T.pack ("invalid call with: " ++ show val ++ " and: " ++ show vals))
+apply val vals = throwError $ Default (T.pack ("invalid call to apply with: " ++ show val ++ " and: " ++ show vals))
 
 bindVars :: Env -> [(T.Text, LispVal)] -> IO Env
 bindVars envRef bindings = readIORef envRef >>= extendEnv bindings >>= newIORef
