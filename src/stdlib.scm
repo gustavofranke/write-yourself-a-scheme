@@ -105,3 +105,8 @@
                      y))
          '()
          lst))
+
+(define (boolean? x)
+  (if (or (eqv? x #t) (eqv? x #f))
+    #t
+    #f))
