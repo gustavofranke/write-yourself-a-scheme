@@ -20,8 +20,8 @@ parseNumber0 = do
 parseNumber1 :: Parser LispVal
 parseNumber1 = many1 digit <&> Number . read
 
--- 2. Our strings aren’t quite R5RS compliant,
--- because they don’t support escaping of internal quotes within the string.
+-- 2. Our strings aren't quite R5RS compliant,
+-- because they don't support escaping of internal quotes within the string.
 -- Change parseString so that \" gives a literal quote character instead of terminating the string.
 -- You may want to replace noneOf "\"" with a new parser action that accepts
 -- either a non-quote character or a backslash followed by a quote mark.
@@ -60,6 +60,21 @@ parseString1 = do
 -- 5. Add a Character constructor to LispVal,
 -- and create a parser for character literals as described in R5RS.
 
+data LispVal2
+  = Atom T.Text
+  | List [LispVal]
+  | DottedList [LispVal] LispVal
+  | Bool Bool
+  | Charac Char deriving Show
+
+-- |
+-- >>> parse parseChar "charparser" "a"
+-- Right (Charac 'a')
+-- >>> parse parseChar "charparser" "\n"
+-- Right (Charac '\n')
+parseChar :: Parser LispVal2
+parseChar = Charac <$> anyChar
+
 -- 6. Add a Float constructor to LispVal, and support R5RS syntax for decimals.
 -- The Haskell function readFloat may be useful.
 
@@ -94,17 +109,17 @@ parseString1 = do
 -- symbol?, string?, number?, etc.
 
 -- 2. Change unpackNum so that it always returns 0 if the value is not a number,
--- even if it’s a string or list that could be parsed as a number.
+-- even if it's a string or list that could be parsed as a number.
 
 -- 3. Add the symbol-handling functions from R5RS.
--- A symbol is what we’ve been calling an Atom in our data constructors.
+-- A symbol is what we've been calling an Atom in our data constructors.
 -----------------------------------------------------------------------------
 -- Exercises
 -- 1. Instead of treating any non-false value as true,
 -- change the definition of if so that the predicate accepts only Bool values and throws an error on any others.
 
 -- 2. equal? has a bug in that a list of values is compared using eqv? instead of equal?.
--- For example, (equal? ’(1 "2") ’(1 2)) = #f, while you’d expect it to be true.
+-- For example, (equal? '(1 "2") '(1 2)) = #f, while you'd expect it to be true.
 -- Change equal? so that it continues to ignore types as it recurses into list structures.
 -- You can either do this explicitly, following the example in eqv?,
 -- or factor the list clause into a separate helper function that is parameterized by the equality testing function.
@@ -112,15 +127,15 @@ parseString1 = do
 -- 3. Implement cond and case expressions.
 
 -- 4. Add the rest of the string functions.
--- You don’t yet know enough to do string-set!;
--- this is difficult to implement in Haskell, but you’ll have enough information after the next two sections.
+-- You don't yet know enough to do string-set!;
+-- this is difficult to implement in Haskell, but you'll have enough information after the next two sections.
 -----------------------------------------------------------------------------
 -- Exercises
 -- 1. Instead of treating any non-false value as true, change the definition of if
 -- so that the predicate accepts only Bool values and throws an error on any others.
 
 -- 2. equal? has a bug in that a list of values is compared using eqv? instead of equal?.
--- For example, (equal? ’(1 "2") ’(1 2)) = #f, while you’d expect it to be true.
+-- For example, (equal? '(1 "2") '(1 2)) = #f, while you'd expect it to be true.
 -- Change equal? so that it continues to ignore types as it recurses into list structures.
 -- You can either do this explicitly, following the example in eqv?,
 -- or factor the list clause into a separate helper function that is parameterized by the equality testing function.
@@ -128,5 +143,5 @@ parseString1 = do
 -- 3. Implement cond and case expressions.
 
 -- 4. Add the rest of the string functions.
--- You don’t yet know enough to do string-set!; this is difficult to implement in Haskell,
--- but you’ll have enough information after the next two sections.
+-- You don't yet know enough to do string-set!; this is difficult to implement in Haskell,
+-- but you'll have enough information after the next two sections.
