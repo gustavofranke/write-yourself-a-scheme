@@ -142,6 +142,8 @@ equal [arg1, arg2] = do
 equal badArgList = throwError $ NumArgs 2 badArgList
 
 -- |
+-- >>> unpackNum (Number (-7))
+-- Right (-7)
 -- >>> unpackNum (Number 7)
 -- Right 7
 -- >>> unpackNum (String $ T.pack "7")

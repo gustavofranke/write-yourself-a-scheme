@@ -85,6 +85,8 @@ parseString = do
 -- Right he7l8lo#t
 -- >>> parse parseAtom "default" "#t"
 -- Right #t
+-- >>> parse parseAtom "default" "-123"
+-- Right -123
 -- >>> parse parseAtom "default" "123"
 -- Left "default" (line 1, column 1):
 -- unexpected "1"
