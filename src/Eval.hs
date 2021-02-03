@@ -37,12 +37,16 @@ import Text.ParserCombinators.Parsec (Parser, endBy, parse)
 -- >>> import Prim
 
 -- |
+-- >>> newIORef [] >>= (\e -> runExceptT $ eval e (Number (-5)))
+-- Right -5
 -- >>> newIORef [] >>= (\e -> runExceptT $ eval e (Bool True))
 -- Right #t
 -- >>> newIORef [] >>= (\e -> runExceptT $ eval e (String $ T.pack "Hello"))
 -- Right "Hello'
 -- >>> newIORef [] >>= (\e -> runExceptT $ eval e (List [Atom $ T.pack "if", (Bool True), (String $ T.pack "Hello"), (String $ T.pack "No no")]))
 -- Right "Hello'
+-- >>> newIORef [] >>= (\e -> runExceptT $ eval e (List [Atom $ T.pack "if", (Bool False), (String $ T.pack "Hello"), (String $ T.pack "No no")]))
+-- Right "No no'
 eval :: Env -> LispVal -> IOThrowsError LispVal
 eval _ val@(String _) = return val
 eval _ val@(Number _) = return val

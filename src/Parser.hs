@@ -40,6 +40,8 @@ symbol = oneOf "!$%&|*+-/:<=?>@^_~#"
 -- Right (quote (1 3 ("this' "one')))
 -- >>> parse parseExpr "default" "'atom"
 -- Right (quote atom)
+-- >>> parse parseExpr "default" "-2"
+-- Right -2
 -- >>> parse parseExpr "default" "2"
 -- Right 2
 -- >>> parse parseExpr "default" "\"a string\""
