@@ -52,6 +52,8 @@ symbol = oneOf "!$%&|*+-/:<=?>@^_~#"
 -- Right (1 2 3)
 -- >>> parse parseExpr "default" "'(1 2 3)"
 -- Right (quote (1 2 3))
+-- >>> parse parseExpr "default" "\"(if (> 2 3) \"no\" \"yes\")\""
+-- Right "(if (> 2 3) '
 parseExpr :: Parser LispVal
 parseExpr =
   parseAtom
